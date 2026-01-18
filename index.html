@@ -316,6 +316,7 @@ const auth = firebase.auth();
 let companyData = {};
 let currentCompany = null;
 let currentUser = null;
+let creatingProfile = false;
 let currentDate = null;
 let currentMonth = null;
 let currentYear = null;
@@ -861,6 +862,8 @@ function register(){
 
   const role = roleInput.value;
 
+  creatingProfile = true;
+
   auth.createUserWithEmailAndPassword(email, password)
     .then(cred => {
 
@@ -874,9 +877,11 @@ function register(){
       });
 
     })
-    .then(() => {
-      console.log("Usuario creado con rol:", role);
-    })
+.then(() => {
+  console.log("Usuario creado con rol:", role);
+  creatingProfile = false;
+})
+
     .catch(err => {
       console.error("Error en registro:", err);
       alert(err.message);
@@ -905,11 +910,19 @@ auth.onAuthStateChanged(user => {
 
         const userData = snapshot.val();
 
-        if(!userData){
-          alert("Perfil de usuario no encontrado");
-          auth.signOut();
-          return;
-        }
+       if(!userData){
+
+  // Si estamos creando perfil, esperar
+  if(creatingProfile){
+    console.log("Perfil aún no creado, esperando...");
+    return;
+  }
+
+  alert("Perfil de usuario no encontrado");
+  auth.signOut();
+  return;
+}
+
 
         // Guardar perfil completo
         currentUser.role = userData.role;
