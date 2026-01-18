@@ -334,20 +334,19 @@ function addCompany(){
     return;
   }
 
-  // Crear nueva empresa localmente
+  // 1️⃣ Crear nueva empresa localmente
   companyData[name] = { calendar: {}, templates: [] };
   document.getElementById('newCompanyName').value = '';
 
-  currentCompany = name;
-
-  // Guardar en Firebase
+  // 2️⃣ Guardar en Firebase
   saveToStorage();
 
-  // 🔹 Abrir la empresa recién creada y mostrar calendario
-  openCompany(name);
-
-  // 🔹 Actualizar la lista de empresas
+  // 3️⃣ Actualizar lista de empresas para que aparezca en el menú
   renderCompanyList();
+
+  // 4️⃣ Seleccionar y abrir la empresa recién creada
+  currentCompany = name;
+  openCompany(name);
 }
 
 
