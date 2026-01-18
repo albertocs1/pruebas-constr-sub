@@ -16,287 +16,132 @@ body {
   height:100vh;
   box-sizing:border-box;
 }
-
 /* Cabecera */
-.header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:10px 16px;
-  background:transparent;
-}
+.header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; background:transparent; }
 .header-left { display:flex; flex-direction:column; }
 h1 { margin:0; font-size:1.4rem; color:#0f172a; }
 #selectedCompanyName { margin:0; font-size:1rem; color:#1e40af; font-weight:600; }
-
 /* Layout principal */
 #companyMenu, #calendarView { display:none; height: calc(100vh - 64px); padding:10px 16px; box-sizing:border-box; }
-
 /* Companies */
 .company-item { display:inline-block; padding:10px 20px; margin:5px 5px 5px 0; cursor:pointer; border-radius:25px; background:#1e40af; color:white; font-weight:bold; transition:all 0.18s ease; white-space:nowrap; box-shadow:0 2px 5px rgba(0,0,0,0.08); }
 .company-item:hover { background:#3749c1; transform:translateY(-2px); }
-
 /* Month Header */
-#monthHeader {
-  display:grid;
-  grid-template-columns:1fr auto 1fr;
-  align-items:center;
-  gap:8px;
-  margin:12px 0;
-}
+#monthHeader { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin:12px 0; }
 #monthHeader #calendarTitle { font-size:1.2rem; font-weight:700; text-align:center; }
 #monthHeader button { padding:8px 12px; border-radius:8px; background:transparent; color:#111827; font-weight:700; border:1px solid rgba(0,0,0,0.06); cursor:pointer; }
 #monthHeader button:hover { background: rgba(0,0,0,0.04); transform:translateY(-1px); }
-
 /* Calendar full screen container */
-#calendarContainer {
-  overflow:auto;
-  width:100%;
-  height: calc(100% - 120px); /* deja espacio para header y botones */
-  box-sizing:border-box;
-  padding-bottom:12px;
-}
-
-/* Weekdays + Grid */
-.weekdaysContainer, #calendar {
-  display:grid;
-  grid-template-columns:repeat(7, 1fr);
-  gap:10px;
-  width:100%;
-  box-sizing:border-box;
-}
+#calendarContainer { overflow:auto; width:100%; height: calc(100% - 120px); box-sizing:border-box; padding-bottom:12px; }
+.weekdaysContainer, #calendar { display:grid; grid-template-columns:repeat(7, 1fr); gap:10px; width:100%; box-sizing:border-box; }
 .weekdaysContainer { margin-bottom:8px; font-weight:700; text-align:center; padding:0 6px; }
-
-/* Cada día */
-.day {
-  background:white;
-  border-radius:12px;
-  min-height:120px;
-  padding:10px;
-  position:relative;
-  box-shadow:0 2px 8px rgba(2,6,23,0.06);
-  display:flex; flex-direction:column;
-  transition:transform .14s, box-shadow .14s;
-}
+.day { background:white; border-radius:12px; min-height:120px; padding:10px; position:relative; box-shadow:0 2px 8px rgba(2,6,23,0.06); display:flex; flex-direction:column; transition:transform .14s, box-shadow .14s; }
 .day:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(2,6,23,0.08); }
-
 .day .worker-preview-container { margin-top:8px; overflow-y:auto; flex-grow:1; }
-
-/* marcadores */
 .weekend { background-color:#eef7ff; }
 .today { background-color:#1e3a8a; color:white; }
-
-/* añadir trabajador */
 .add-btn { position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%; background:#16a34a; color:white; border:none; display:flex; align-items:center; justify-content:center; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
 .add-btn:hover { transform:translateY(-2px); background:#15803d; }
-
-/* Botones */
 .controls { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
 .back-btn { background:#374151; color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; }
 .back-btn:hover { background:#111827; }
-
-/* Modal */
 .modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); justify-content:center; align-items:center; z-index:9999; }
 .modal-content { background:white; padding:20px; border-radius:12px; width:92%; max-width:640px; max-height:90%; overflow:auto; box-shadow:0 10px 30px rgba(2,6,23,0.2); }
 .close { float:right; cursor:pointer; color:#ef4444; font-size:20px; }
-
-/* Formularios */
 label { display:block; margin-top:10px; font-weight:600; }
 input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #d1d5db; box-sizing:border-box; }
 .work-block { margin-top:10px; padding:10px; border-radius:8px; background:#f8fafc; border:1px solid #e6eef8; }
 .remove-btn { background:#ef4444; color:white; border:none; padding:6px 10px; margin-top:8px; border-radius:8px; cursor:pointer; }
 .add-work-btn { background:#0ea5a3; color:white; border:none; padding:8px 10px; margin-top:8px; border-radius:8px; cursor:pointer; }
-
-/* Resumen botones */
 .summary-btn { margin-left:8px; padding:6px 8px; font-size:0.9rem; cursor:pointer; border-radius:6px; border:none; }
 .summary-btn.edit { background:#2563eb; color:white; }
 .summary-btn.delete { background:#ef4444; color:white; }
-
-/* Cost modal specifics */
 #costModal .modal-content { max-width:520px; }
 #costInputs div { margin-bottom:8px; }
-
-/* Responsive */
-@media(max-width:900px){
-  .weekdaysContainer, #calendar { grid-template-columns:repeat(7, 140px); }
-  #calendarContainer { overflow-x:auto; }
-}
-@media(max-width:600px){
-  .header { padding:8px; }
-  #monthHeader { grid-template-columns:1fr; gap:6px; text-align:center; }
-  #monthHeader button { width:100%; }
-  .weekdaysContainer, #calendar { grid-template-columns:repeat(7, 120px); }
-  .day { min-height:90px; padding:8px; }
-  #calendarContainer { height: calc(100% - 200px); }
-}
+@media(max-width:900px){ .weekdaysContainer, #calendar { grid-template-columns:repeat(7, 140px); } #calendarContainer { overflow-x:auto; } }
+@media(max-width:600px){ .header { padding:8px; } #monthHeader { grid-template-columns:1fr; gap:6px; text-align:center; } #monthHeader button { width:100%; } .weekdaysContainer, #calendar { grid-template-columns:repeat(7, 120px); } .day { min-height:90px; padding:8px; } #calendarContainer { height: calc(100% - 200px); } }
 </style>
 </head>
 <body>
+
 <!-- ======== MENÚ INICIAL ======== -->
-<div id="initialMenu" style="
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  gap:20px;
-  background:#f4f6f8;
-  font-family:Arial, sans-serif;
-">
+<div id="initialMenu" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; gap:20px; background:#f4f6f8; font-family:Arial, sans-serif;">
   <h1 style="color:#1e40af;">Partes de Obra MMX</h1>
-  <button onclick="showLogin()" style="
-    padding:12px 24px;
-    border:none;
-    border-radius:12px;
-    background:#2563eb;
-    color:white;
-    font-size:1.1rem;
-    cursor:pointer;
-    box-shadow:0 4px 12px rgba(0,0,0,0.1);
-  ">Entrar</button>
-  <button onclick="showRegister()" style="
-    padding:12px 24px;
-    border:none;
-    border-radius:12px;
-    background:#16a34a;
-    color:white;
-    font-size:1.1rem;
-    cursor:pointer;
-    box-shadow:0 4px 12px rgba(0,0,0,0.1);
-  ">Registrarse</button>
+  <button onclick="showLogin()" style="padding:12px 24px; border:none; border-radius:12px; background:#2563eb; color:white; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.1);">Entrar</button>
+  <button onclick="showRegister()" style="padding:12px 24px; border:none; border-radius:12px; background:#16a34a; color:white; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.1);">Registrarse</button>
 </div>
 
 <!-- ======== LOGIN ======== -->
 <div id="loginView" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8; font-family:Arial, sans-serif;">
-  <div style="
-    background:white;
-    padding:30px;
-    border-radius:12px;
-    width:320px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.15);
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  ">
+  <div style="background:white; padding:30px; border-radius:12px; width:320px; box-shadow:0 10px 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:12px;">
     <h2 style="text-align:center;">Iniciar sesión</h2>
     <input type="email" id="loginEmail" placeholder="Email">
     <input type="password" id="loginPassword" placeholder="Contraseña">
-    <button onclick="login()" style="
-      padding:10px;
-      border:none;
-      border-radius:8px;
-      background:#2563eb;
-      color:white;
-      font-weight:700;
-      cursor:pointer;
-    ">Entrar</button>
-    <p style="text-align:center; margin-top:6px;">
-      ¿No tienes cuenta? 
-      <span onclick="showRegister()" style="color:#16a34a; cursor:pointer;">Registrarse</span>
-    </p>
+    <button onclick="login()" style="padding:10px; border:none; border-radius:8px; background:#2563eb; color:white; font-weight:700; cursor:pointer;">Entrar</button>
+    <p style="text-align:center; margin-top:6px;">¿No tienes cuenta? <span onclick="showRegister()" style="color:#16a34a; cursor:pointer;">Registrarse</span></p>
   </div>
 </div>
 
 <!-- ======== REGISTRO ======== -->
 <div id="registerView" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8; font-family:Arial, sans-serif;">
-  <div style="
-    background:white;
-    padding:30px;
-    border-radius:12px;
-    width:320px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.15);
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  ">
+  <div style="background:white; padding:30px; border-radius:12px; width:320px; box-shadow:0 10px 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; gap:12px;">
     <h2 style="text-align:center;">Registro</h2>
     <input type="email" id="registerEmail" placeholder="Email">
     <input type="password" id="registerPassword" placeholder="Contraseña">
     <input type="text" id="registerCompanyName" placeholder="Nombre de la empresa">
-
     <p>Tipo de empresa:</p>
     <label><input type="radio" name="companyRole" value="constructora"> Constructora</label>
     <label><input type="radio" name="companyRole" value="subcontrata"> Subcontrata</label>
-
-    <button onclick="register()" style="
-      padding:10px;
-      border:none;
-      border-radius:8px;
-      background:#16a34a;
-      color:white;
-      font-weight:700;
-      cursor:pointer;
-    ">Registrarse</button>
-    <p style="text-align:center; margin-top:6px;">
-      ¿Ya tienes cuenta? 
-      <span onclick="showLogin()" style="color:#2563eb; cursor:pointer;">Entrar</span>
-    </p>
+    <button onclick="register()" style="padding:10px; border:none; border-radius:8px; background:#16a34a; color:white; font-weight:700; cursor:pointer;">Registrarse</button>
+    <p style="text-align:center; margin-top:6px;">¿Ya tienes cuenta? <span onclick="showLogin()" style="color:#2563eb; cursor:pointer;">Entrar</span></p>
   </div>
 </div>
 
-<!-- ======== JS PARA CAMBIAR VISTAS ======== -->
+<!-- ======== VISTA PRINCIPAL DE LA APP ======== -->
+<div id="appView" style="display:none">
+  <!-- Aquí va toda la app: companyMenu, calendarView, modals, etc. -->
+  <!-- Botón Exportar agregado -->
+  <button id="exportBtn" style="position:absolute; top:10px; right:10px; padding:8px 12px; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">Exportar</button>
+  <!-- Resto de la app permanece igual -->
+</div>
+
+<!-- ======== JS PRINCIPAL ======== -->
 <script>
-function showLogin(){
-  document.getElementById('initialMenu').style.display = 'none';
-  document.getElementById('registerView').style.display = 'none';
-  document.getElementById('loginView').style.display = 'flex';
-}
+// Funciones para mostrar vistas
+function showLogin(){ document.getElementById('initialMenu').style.display='none'; document.getElementById('registerView').style.display='none'; document.getElementById('loginView').style.display='flex'; }
+function showRegister(){ document.getElementById('initialMenu').style.display='none'; document.getElementById('loginView').style.display='none'; document.getElementById('registerView').style.display='flex'; }
 
-function showRegister(){
-  document.getElementById('initialMenu').style.display = 'none';
-  document.getElementById('loginView').style.display = 'none';
-  document.getElementById('registerView').style.display = 'flex';
-}
-
-// FUNCIONES DE LOGIN/REGISTRO EXISTENTES
+// Login
 function login(){
   const email = document.getElementById('loginEmail').value;
   const pass = document.getElementById('loginPassword').value;
-
-  if(!email || !pass){ alert("Ingrese email y contraseña"); return; }
-
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(() => {
-      // Ocultar login y mostrar app
-      document.getElementById('loginView').style.display = 'none';
-      document.getElementById('appView').style.display = 'block';
-      showMenu();
-    })
-    .catch(err => alert(err.message));
+  if(!email||!pass){alert('Ingrese email y contraseña');return;}
+  auth.signInWithEmailAndPassword(email,pass).then(()=>{
+    document.getElementById('loginView').style.display='none';
+    document.getElementById('appView').style.display='block';
+    showMenu();
+  }).catch(err=>alert(err.message));
 }
 
+// Registro
 function register(){
-  const email = document.getElementById('registerEmail').value.trim();
-  const password = document.getElementById('registerPassword').value.trim();
-  const companyName = document.getElementById('registerCompanyName').value.trim();
-  const roleInput = document.querySelector('input[name="companyRole"]:checked');
-
-  if(!email || !password || !companyName || !roleInput){
-    alert("Rellena todos los campos y selecciona tipo de empresa");
-    return;
-  }
-
-  const role = roleInput.value;
-
-  auth.createUserWithEmailAndPassword(email, password)
-    .then(cred => {
-      const uid = cred.user.uid;
-      return db.ref('users/' + uid).set({
-        email, role, companyName, createdAt: Date.now()
-      });
-    })
-    .then(() => {
-      currentUser = auth.currentUser;
-      currentUser.role = role;
-      currentUser.companyName = companyName;
-
-      // Ocultar formularios y mostrar app
-      document.getElementById('registerView').style.display = 'none';
-      document.getElementById('appView').style.display = 'block';
-      showMenu();
-    })
-    .catch(err => alert(err.message));
+  const email=document.getElementById('registerEmail').value.trim();
+  const password=document.getElementById('registerPassword').value.trim();
+  const companyName=document.getElementById('registerCompanyName').value.trim();
+  const roleInput=document.querySelector('input[name="companyRole"]:checked');
+  if(!email||!password||!companyName||!roleInput){alert('Rellena todos los campos y selecciona tipo de empresa');return;}
+  const role=roleInput.value;
+  auth.createUserWithEmailAndPassword(email,password).then(cred=>{
+    const uid=cred.user.uid;
+    return db.ref('users/'+uid).set({email, role, companyName, createdAt:Date.now()});
+  }).then(()=>{
+    currentUser=auth.currentUser;
+    currentUser.role=role;
+    currentUser.companyName=companyName;
+    document.getElementById('registerView').style.display='none';
+    document.getElementById('appView').style.display='block';
+    showMenu();
+  }).catch(err=>alert(err.message));
 }
 </script>
 
@@ -412,7 +257,6 @@ const auth = firebase.auth();
 let companyData = {};
 let currentCompany = null;
 let currentUser = null;
-let creatingProfile = false;
 let currentDate = null;
 let currentMonth = null;
 let currentYear = null;
@@ -935,68 +779,6 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(()=>console.log("Service Worker registrado")).catch(err=>console.log("Error Service Worker:",err));
 }
 
-function login(){
-  const email = document.getElementById('loginEmail').value;
-  const pass = document.getElementById('loginPassword').value;
-
-  auth.signInWithEmailAndPassword(email, pass)
-    .catch(err => alert(err.message));
-}
-
-function register(){
-
-  const email = document.getElementById('registerEmail').value.trim();
-  const password = document.getElementById('registerPassword').value.trim();
-  const companyName = document.getElementById('registerCompanyName').value.trim();
-
-  const roleInput = document.querySelector('input[name="companyRole"]:checked');
-
-  if(!email || !password || !companyName || !roleInput){
-    alert("Rellena todos los campos y selecciona tipo de empresa");
-    return;
-  }
-
-  const role = roleInput.value;
-
-  creatingProfile = true;
-
-  auth.createUserWithEmailAndPassword(email, password)
-    .then(cred => {
-
-      const uid = cred.user.uid;
-
-      return db.ref('users/' + uid).set({
-        email: email,
-        role: role,
-        companyName: companyName,
-        createdAt: Date.now()
-      });
-
-    })
-.then(() => {
-  console.log("Usuario creado con rol:", role);
-  creatingProfile = false;
-
-  // 🔹 Asignar currentUser
-  currentUser = auth.currentUser;
-  currentUser.role = role;
-  currentUser.companyName = companyName;
-
-  // 🔹 Mostrar la app inmediatamente
-  document.getElementById('loginView').style.display = 'none';
-  document.getElementById('appView').style.display = 'block';
-  showMenu();
-})
-
-
-    .catch(err => {
-      console.error("Error en registro:", err);
-      alert(err.message);
-    });
-}
-
-
-
 // ==== Scroll sincronizado (cabeceras) ====
 const calContainer = document.getElementById('calendarContainer');
 const weekdaysContainer = document.querySelector('.weekdaysContainer');
@@ -1006,7 +788,6 @@ if(calContainer && weekdaysContainer){
 
 // ==== Inicializar ====
 auth.onAuthStateChanged(user => {
-  document.getElementById('loadingView').style.display = 'none';
 
  if(user){
   currentUser = user;
@@ -1043,36 +824,9 @@ auth.onAuthStateChanged(user => {
       });
   }
 
-  // 🔹 Llamar a la función para esperar perfil si es necesario
-  waitForProfile(user.uid);
-}
-
-  // Si estamos creando perfil, esperar
-  if(creatingProfile){
-    console.log("Perfil aún no creado, esperando...");
-    return;
-  }
-
-  alert("Perfil de usuario no encontrado");
-  auth.signOut();
-  return;
-}
-
-
-        // Guardar perfil completo
-        currentUser.role = userData.role;
-        currentUser.companyName = userData.companyName;
-
-        console.log("Rol:", currentUser.role);
-        console.log("Empresa:", currentUser.companyName);
-
-        // 🟢 AHORA sí mostrar la app
-        document.getElementById('loginView').style.display = 'none';
-        document.getElementById('appView').style.display = 'block';
-
-        showMenu(); // ya existe currentUser.role
-      });
-
+  // Llamar a la función para esperar perfil si es necesario
+    waitForProfile(user.uid);
+    
   } else {
     currentUser = null;
     document.getElementById('appView').style.display = 'none';
@@ -1087,7 +841,7 @@ auth.onAuthStateChanged(user => {
 
 </script>
 
-</div> <!-- cierre appView -->
+</div>
 
 </body>
 </html>
