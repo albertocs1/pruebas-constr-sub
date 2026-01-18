@@ -371,7 +371,8 @@ function showMenu(){
   }
 
   // Mostrar email del usuario
-  document.getElementById('currentUserEmail').textContent = "Conectado como: " + currentUser.email;
+ document.getElementById('currentUserEmail').textContent =
+  `Conectado como: ${currentUser.email} (${currentUser.role})`;
 
   // Cargar empresas desde Firebase y luego renderizar
   loadFromStorage(() => {
@@ -896,6 +897,23 @@ auth.onAuthStateChanged(user => {
 
   if(user){
     currentUser = user;
+    db.ref('users/' + user.uid).once('value')
+  .then(snapshot => {
+    const userData = snapshot.val();
+
+    if(!userData){
+      alert("Perfil de usuario no encontrado");
+      auth.signOut();
+      return;
+    }
+
+    currentUser.role = userData.role;
+    currentUser.companyName = userData.companyName;
+
+    console.log("Rol:", currentUser.role);
+    console.log("Empresa:", currentUser.companyName);
+  });
+
     document.getElementById('loginView').style.display = 'none';
     document.getElementById('appView').style.display = 'block';
     
