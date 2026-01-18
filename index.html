@@ -205,21 +205,25 @@ function register(){
       createdAt: Date.now(),
       companies: { [companyName]: { calendar:{}, templates:[] } } // 🔹 empresa inicial
     });
-  }).then(()=>{
-  currentUser = auth.currentUser;
-  currentUser.role = role;
-  currentUser.companyName = companyName;
+  })
+    .then(()=>{
+      currentUser = auth.currentUser;
+      currentUser.role = role;
+      currentUser.companyName = companyName;
 
   // 2️⃣ Cargamos empresas desde Firebase
-  loadFromStorage(() => {
-    document.getElementById('registerView').style.display='none';
-    document.getElementById('appView').style.display='block';
+      loadFromStorage(() => {
+      document.getElementById('registerView').style.display='none';
+      document.getElementById('appView').style.display='block';
 
     // 🔹 Mostrar menú de empresas en vez de abrir calendario directamente
-    showMenu();
+      showMenu();
   });
 })
-
+.catch(err => {
+      alert("Error al registrar: " + err.message);
+    });
+}
 
 </script>
 
