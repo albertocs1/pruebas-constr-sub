@@ -338,15 +338,14 @@ function addCompany(){
   companyData[name] = { calendar: {}, templates: [] };
   document.getElementById('newCompanyName').value = '';
 
-  // 2️⃣ Guardar en Firebase
-  saveToStorage();
+saveToStorage();
 
-  // 3️⃣ Actualizar lista de empresas para que aparezca en el menú
+loadFromStorage(() => {
   renderCompanyList();
-
-  // 4️⃣ Seleccionar y abrir la empresa recién creada
   currentCompany = name;
   openCompany(name);
+});
+
 }
 
 
