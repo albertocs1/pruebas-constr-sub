@@ -99,51 +99,6 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
 
 <!-- ======== VISTA PRINCIPAL DE LA APP ======== -->
 <div id="appView" style="display:none">
-  <!-- Aquí va toda la app: companyMenu, calendarView, modals, etc. -->
-  <!-- Botón Exportar agregado -->
-  <button id="exportBtn" style="position:absolute; top:10px; right:10px; padding:8px 12px; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">Exportar</button>
-  <!-- Resto de la app permanece igual -->
-</div>
-
-<!-- ======== JS PRINCIPAL ======== -->
-<script>
-// Funciones para mostrar vistas
-function showLogin(){ document.getElementById('initialMenu').style.display='none'; document.getElementById('registerView').style.display='none'; document.getElementById('loginView').style.display='flex'; }
-function showRegister(){ document.getElementById('initialMenu').style.display='none'; document.getElementById('loginView').style.display='none'; document.getElementById('registerView').style.display='flex'; }
-
-// Login
-function login(){
-  const email = document.getElementById('loginEmail').value;
-  const pass = document.getElementById('loginPassword').value;
-  if(!email||!pass){alert('Ingrese email y contraseña');return;}
-  auth.signInWithEmailAndPassword(email,pass).then(()=>{
-    document.getElementById('loginView').style.display='none';
-    document.getElementById('appView').style.display='block';
-    showMenu();
-  }).catch(err=>alert(err.message));
-}
-
-// Registro
-function register(){
-  const email=document.getElementById('registerEmail').value.trim();
-  const password=document.getElementById('registerPassword').value.trim();
-  const companyName=document.getElementById('registerCompanyName').value.trim();
-  const roleInput=document.querySelector('input[name="companyRole"]:checked');
-  if(!email||!password||!companyName||!roleInput){alert('Rellena todos los campos y selecciona tipo de empresa');return;}
-  const role=roleInput.value;
-  auth.createUserWithEmailAndPassword(email,password).then(cred=>{
-    const uid=cred.user.uid;
-    return db.ref('users/'+uid).set({email, role, companyName, createdAt:Date.now()});
-  }).then(()=>{
-    currentUser=auth.currentUser;
-    currentUser.role=role;
-    currentUser.companyName=companyName;
-    document.getElementById('registerView').style.display='none';
-    document.getElementById('appView').style.display='block';
-    showMenu();
-  }).catch(err=>alert(err.message));
-}
-</script>
 
 <!-- MENU EMPRESAS -->
 <div id="companyMenu">
@@ -204,6 +159,55 @@ function register(){
     </div>
   </div>
 </div>
+
+
+  
+  <!-- Botón Exportar agregado -->
+  <button id="exportBtn" style="position:absolute; top:10px; right:10px; padding:8px 12px; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">Exportar</button>
+  <!-- Resto de la app permanece igual -->
+</div>
+
+<!-- ======== JS PRINCIPAL ======== -->
+<script>
+// Funciones para mostrar vistas
+function showLogin(){ document.getElementById('initialMenu').style.display='none'; document.getElementById('registerView').style.display='none'; document.getElementById('loginView').style.display='flex'; }
+function showRegister(){ document.getElementById('initialMenu').style.display='none'; document.getElementById('loginView').style.display='none'; document.getElementById('registerView').style.display='flex'; }
+
+// Login
+function login(){
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPassword').value;
+  if(!email||!pass){alert('Ingrese email y contraseña');return;}
+  auth.signInWithEmailAndPassword(email,pass).then(()=>{
+    document.getElementById('loginView').style.display='none';
+    document.getElementById('appView').style.display='block';
+    showMenu();
+  }).catch(err=>alert(err.message));
+}
+
+// Registro
+function register(){
+  const email=document.getElementById('registerEmail').value.trim();
+  const password=document.getElementById('registerPassword').value.trim();
+  const companyName=document.getElementById('registerCompanyName').value.trim();
+  const roleInput=document.querySelector('input[name="companyRole"]:checked');
+  if(!email||!password||!companyName||!roleInput){alert('Rellena todos los campos y selecciona tipo de empresa');return;}
+  const role=roleInput.value;
+  auth.createUserWithEmailAndPassword(email,password).then(cred=>{
+    const uid=cred.user.uid;
+    return db.ref('users/'+uid).set({email, role, companyName, createdAt:Date.now()});
+  }).then(()=>{
+    currentUser=auth.currentUser;
+    currentUser.role=role;
+    currentUser.companyName=companyName;
+    document.getElementById('registerView').style.display='none';
+    document.getElementById('appView').style.display='block';
+    showMenu();
+  }).catch(err=>alert(err.message));
+}
+</script>
+
+
 
 <!-- Librerías -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -378,7 +382,10 @@ function openCompany(name){
   document.getElementById('companyMenu').style.display = 'none';
   document.getElementById('calendarView').style.display = 'block';
   document.getElementById('selectedCompanyName').textContent = name;
+  loadFromStorage(() => {
   renderCalendar();
+});
+
 }
 function backToMenu(){ currentCompany = null; showMenu(); }
 
@@ -411,7 +418,7 @@ function logout() {
     .catch(err => alert("Error cerrando sesión: " + err.message));
 }
 document.getElementById('logoutBtn').onclick = logout;
-document.getElementById('showMenuBtn').onclick = showMenu;
+
 
   
 // ==== Render calendario ====
