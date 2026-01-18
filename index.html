@@ -343,9 +343,13 @@ function addCompany(){
   // Guardar en Firebase
   saveToStorage();
 
-  // 🔹 Actualizar la lista inmediatamente, sin esperar a Firebase
+  // 🔹 Abrir la empresa recién creada y mostrar calendario
+  openCompany(name);
+
+  // 🔹 Actualizar la lista de empresas
   renderCompanyList();
 }
+
 
 
 
