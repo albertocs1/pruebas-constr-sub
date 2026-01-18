@@ -133,76 +133,172 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
 </style>
 </head>
 <body>
-<div id="loadingView" style="
+<!-- ======== MENÚ INICIAL ======== -->
+<div id="initialMenu" style="
   display:flex;
+  flex-direction:column;
   justify-content:center;
   align-items:center;
   height:100vh;
-  font-size:20px;
-  font-family:Arial;
-  background:#f3f4f6;
+  gap:20px;
+  background:#f4f6f8;
+  font-family:Arial, sans-serif;
 ">
-  Cargando aplicación...
+  <h1 style="color:#1e40af;">Partes de Obra MMX</h1>
+  <button onclick="showLogin()" style="
+    padding:12px 24px;
+    border:none;
+    border-radius:12px;
+    background:#2563eb;
+    color:white;
+    font-size:1.1rem;
+    cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  ">Entrar</button>
+  <button onclick="showRegister()" style="
+    padding:12px 24px;
+    border:none;
+    border-radius:12px;
+    background:#16a34a;
+    color:white;
+    font-size:1.1rem;
+    cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  ">Registrarse</button>
 </div>
 
-<div id="loginView" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8;">
-
+<!-- ======== LOGIN ======== -->
+<div id="loginView" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8; font-family:Arial, sans-serif;">
   <div style="
     background:white;
     padding:30px;
     border-radius:12px;
     width:320px;
     box-shadow:0 10px 25px rgba(0,0,0,0.15);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
   ">
-    <h2 style="text-align:center;margin-bottom:15px;">Acceso a Partes MMX</h2>
-
+    <h2 style="text-align:center;">Iniciar sesión</h2>
     <input type="email" id="loginEmail" placeholder="Email">
-    <input type="email" id="registerEmail" placeholder="Email de registro">
     <input type="password" id="loginPassword" placeholder="Contraseña">
-<input type="text" id="registerCompanyName" placeholder="Nombre de la empresa">
-
-<div style="margin:10px 0; text-align:left;">
-  <strong>Tipo de empresa:</strong><br>
-
-  <label>
-    <input type="radio" name="companyRole" value="constructora">
-    Constructora
-  </label><br>
-
-  <label>
-    <input type="radio" name="companyRole" value="subcontrata">
-    Subcontrata
-  </label>
-</div>
-
-    <button onclick="login()" class="back-btn" style="width:100%; margin-top:12px;">
-      Entrar
-    </button>
-
-    <button onclick="register()" class="back-btn" style="
-      width:100%;
-      margin-top:8px;
+    <button onclick="login()" style="
+      padding:10px;
+      border:none;
+      border-radius:8px;
       background:#2563eb;
-    ">
-      Registrarse
-    </button>
+      color:white;
+      font-weight:700;
+      cursor:pointer;
+    ">Entrar</button>
+    <p style="text-align:center; margin-top:6px;">
+      ¿No tienes cuenta? 
+      <span onclick="showRegister()" style="color:#16a34a; cursor:pointer;">Registrarse</span>
+    </p>
   </div>
 </div>
-<div id="appView" style="display:none">
 
+<!-- ======== REGISTRO ======== -->
+<div id="registerView" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8; font-family:Arial, sans-serif;">
+  <div style="
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    width:320px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  ">
+    <h2 style="text-align:center;">Registro</h2>
+    <input type="email" id="registerEmail" placeholder="Email">
+    <input type="password" id="registerPassword" placeholder="Contraseña">
+    <input type="text" id="registerCompanyName" placeholder="Nombre de la empresa">
 
-<div class="header">
-  <div class="header-left">
-    <h1>Partes de Obra MMX</h1>
-    <p id="selectedCompanyName"></p>
-  </div>
-  <div>
-    <div class="controls">
-      <button id="showMenuBtn" class="back-btn">Empresas</button>
-      <button id="exportBtn" class="back-btn">📥 Exportar a Excel</button>
-    </div>
+    <p>Tipo de empresa:</p>
+    <label><input type="radio" name="companyRole" value="constructora"> Constructora</label>
+    <label><input type="radio" name="companyRole" value="subcontrata"> Subcontrata</label>
+
+    <button onclick="register()" style="
+      padding:10px;
+      border:none;
+      border-radius:8px;
+      background:#16a34a;
+      color:white;
+      font-weight:700;
+      cursor:pointer;
+    ">Registrarse</button>
+    <p style="text-align:center; margin-top:6px;">
+      ¿Ya tienes cuenta? 
+      <span onclick="showLogin()" style="color:#2563eb; cursor:pointer;">Entrar</span>
+    </p>
   </div>
 </div>
+
+<!-- ======== JS PARA CAMBIAR VISTAS ======== -->
+<script>
+function showLogin(){
+  document.getElementById('initialMenu').style.display = 'none';
+  document.getElementById('registerView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'flex';
+}
+
+function showRegister(){
+  document.getElementById('initialMenu').style.display = 'none';
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('registerView').style.display = 'flex';
+}
+
+// FUNCIONES DE LOGIN/REGISTRO EXISTENTES
+function login(){
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPassword').value;
+
+  if(!email || !pass){ alert("Ingrese email y contraseña"); return; }
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      // Ocultar login y mostrar app
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('appView').style.display = 'block';
+      showMenu();
+    })
+    .catch(err => alert(err.message));
+}
+
+function register(){
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value.trim();
+  const companyName = document.getElementById('registerCompanyName').value.trim();
+  const roleInput = document.querySelector('input[name="companyRole"]:checked');
+
+  if(!email || !password || !companyName || !roleInput){
+    alert("Rellena todos los campos y selecciona tipo de empresa");
+    return;
+  }
+
+  const role = roleInput.value;
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(cred => {
+      const uid = cred.user.uid;
+      return db.ref('users/' + uid).set({
+        email, role, companyName, createdAt: Date.now()
+      });
+    })
+    .then(() => {
+      currentUser = auth.currentUser;
+      currentUser.role = role;
+      currentUser.companyName = companyName;
+
+      // Ocultar formularios y mostrar app
+      document.getElementById('registerView').style.display = 'none';
+      document.getElementById('appView').style.display = 'block';
+      showMenu();
+    })
+    .catch(err => alert(err.message));
+}
+</script>
 
 <!-- MENU EMPRESAS -->
 <div id="companyMenu">
