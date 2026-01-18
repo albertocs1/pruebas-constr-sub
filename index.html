@@ -158,6 +158,21 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
 
     <input type="email" id="loginEmail" placeholder="Email">
     <input type="password" id="loginPassword" placeholder="Contraseña">
+<input type="text" id="registerCompanyName" placeholder="Nombre de la empresa">
+
+<div style="margin:10px 0; text-align:left;">
+  <strong>Tipo de empresa:</strong><br>
+
+  <label>
+    <input type="radio" name="companyRole" value="constructora">
+    Constructora
+  </label><br>
+
+  <label>
+    <input type="radio" name="companyRole" value="subcontrata">
+    Subcontrata
+  </label>
+</div>
 
     <button onclick="login()" class="back-btn" style="width:100%; margin-top:12px;">
       Entrar
@@ -830,12 +845,42 @@ function login(){
 }
 
 function register(){
-  const email = document.getElementById('loginEmail').value;
-  const pass = document.getElementById('loginPassword').value;
 
-  auth.createUserWithEmailAndPassword(email, pass)
-    .catch(err => alert(err.message));
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value.trim();
+  const companyName = document.getElementById('registerCompanyName').value.trim();
+
+  const roleInput = document.querySelector('input[name="companyRole"]:checked');
+
+  if(!email || !password || !companyName || !roleInput){
+    alert("Rellena todos los campos y selecciona tipo de empresa");
+    return;
+  }
+
+  const role = roleInput.value;
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(cred => {
+
+      const uid = cred.user.uid;
+
+      return db.ref('users/' + uid).set({
+        email: email,
+        role: role,
+        companyName: companyName,
+        createdAt: Date.now()
+      });
+
+    })
+    .then(() => {
+      console.log("Usuario creado con rol:", role);
+    })
+    .catch(err => {
+      console.error("Error en registro:", err);
+      alert(err.message);
+    });
 }
+
 
 
 // ==== Scroll sincronizado (cabeceras) ====
