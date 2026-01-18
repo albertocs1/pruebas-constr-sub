@@ -880,7 +880,18 @@ function register(){
 .then(() => {
   console.log("Usuario creado con rol:", role);
   creatingProfile = false;
+
+  // 🔹 Asignar currentUser
+  currentUser = auth.currentUser;
+  currentUser.role = role;
+  currentUser.companyName = companyName;
+
+  // 🔹 Mostrar la app inmediatamente
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display = 'block';
+  showMenu();
 })
+
 
     .catch(err => {
       console.error("Error en registro:", err);
@@ -901,16 +912,44 @@ if(calContainer && weekdaysContainer){
 auth.onAuthStateChanged(user => {
   document.getElementById('loadingView').style.display = 'none';
 
-  if(user){
-    currentUser = user;
+ if(user){
+  currentUser = user;
 
-    // 🔴 NO mostrar la app hasta cargar perfil
-    db.ref('users/' + user.uid).once('value')
+  // 🔹 Función para esperar perfil si aún no existe
+  function waitForProfile(uid, attempts = 0){
+    if(attempts > 10) { 
+      alert("Perfil de usuario no encontrado"); 
+      auth.signOut(); 
+      return; 
+    }
+
+    db.ref('users/' + uid).once('value')
       .then(snapshot => {
-
         const userData = snapshot.val();
+        if(!userData){
+          // Esperar 200ms y reintentar
+          setTimeout(() => waitForProfile(uid, attempts+1), 200);
+          return;
+        }
 
-       if(!userData){
+        // Guardar perfil completo
+        currentUser.role = userData.role;
+        currentUser.companyName = userData.companyName;
+
+        console.log("Rol:", currentUser.role);
+        console.log("Empresa:", currentUser.companyName);
+
+        // Mostrar app
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('appView').style.display = 'block';
+
+        showMenu();
+      });
+  }
+
+  // 🔹 Llamar a la función para esperar perfil si es necesario
+  waitForProfile(user.uid);
+}
 
   // Si estamos creando perfil, esperar
   if(creatingProfile){
