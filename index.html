@@ -157,6 +157,7 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
     <h2 style="text-align:center;margin-bottom:15px;">Acceso a Partes MMX</h2>
 
     <input type="email" id="loginEmail" placeholder="Email">
+    <input type="email" id="registerEmail" placeholder="Email de registro">
     <input type="password" id="loginPassword" placeholder="Contraseña">
 <input type="text" id="registerCompanyName" placeholder="Nombre de la empresa">
 
@@ -897,28 +898,32 @@ auth.onAuthStateChanged(user => {
 
   if(user){
     currentUser = user;
+
+    // 🔴 NO mostrar la app hasta cargar perfil
     db.ref('users/' + user.uid).once('value')
-  .then(snapshot => {
-    const userData = snapshot.val();
+      .then(snapshot => {
 
-    if(!userData){
-      alert("Perfil de usuario no encontrado");
-      auth.signOut();
-      return;
-    }
+        const userData = snapshot.val();
 
-    currentUser.role = userData.role;
-    currentUser.companyName = userData.companyName;
+        if(!userData){
+          alert("Perfil de usuario no encontrado");
+          auth.signOut();
+          return;
+        }
 
-    console.log("Rol:", currentUser.role);
-    console.log("Empresa:", currentUser.companyName);
-  });
+        // Guardar perfil completo
+        currentUser.role = userData.role;
+        currentUser.companyName = userData.companyName;
 
-    document.getElementById('loginView').style.display = 'none';
-    document.getElementById('appView').style.display = 'block';
-    
-    // 🔹 Mostrar menú de empresas correctamente
-    showMenu();
+        console.log("Rol:", currentUser.role);
+        console.log("Empresa:", currentUser.companyName);
+
+        // 🟢 AHORA sí mostrar la app
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('appView').style.display = 'block';
+
+        showMenu(); // ya existe currentUser.role
+      });
 
   } else {
     currentUser = null;
@@ -926,6 +931,7 @@ auth.onAuthStateChanged(user => {
     document.getElementById('loginView').style.display = 'flex';
   }
 });
+
 
 
 
