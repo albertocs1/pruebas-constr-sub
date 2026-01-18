@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Partes de Obra MMX</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1e40af">
+<link rel="manifest" href="manifest.json">
+<style>
+/* ==== Estilos Globales ==== */
+html,body { height:100%; margin:0; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background:#f4f6f8;
+  color:#333;
+  height:100vh;
+  box-sizing:border-box;
+}
+
+/* Cabecera */
+.header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 16px;
+  background:transparent;
+}
+.header-left { display:flex; flex-direction:column; }
+h1 { margin:0; font-size:1.4rem; color:#0f172a; }
+#selectedCompanyName { margin:0; font-size:1rem; color:#1e40af; font-weight:600; }
+
+/* Layout principal */
+#companyMenu, #calendarView { display:none; height: calc(100vh - 64px); padding:10px 16px; box-sizing:border-box; }
+
+/* Companies */
+.company-item { display:inline-block; padding:10px 20px; margin:5px 5px 5px 0; cursor:pointer; border-radius:25px; background:#1e40af; color:white; font-weight:bold; transition:all 0.18s ease; white-space:nowrap; box-shadow:0 2px 5px rgba(0,0,0,0.08); }
+.company-item:hover { background:#3749c1; transform:translateY(-2px); }
+
+/* Month Header */
+#monthHeader {
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:8px;
+  margin:12px 0;
+}
+#monthHeader #calendarTitle { font-size:1.2rem; font-weight:700; text-align:center; }
+#monthHeader button { padding:8px 12px; border-radius:8px; background:transparent; color:#111827; font-weight:700; border:1px solid rgba(0,0,0,0.06); cursor:pointer; }
+#monthHeader button:hover { background: rgba(0,0,0,0.04); transform:translateY(-1px); }
+
+/* Calendar full screen container */
+#calendarContainer {
+  overflow:auto;
+  width:100%;
+  height: calc(100% - 120px); /* deja espacio para header y botones */
+  box-sizing:border-box;
+  padding-bottom:12px;
+}
+
+/* Weekdays + Grid */
+.weekdaysContainer, #calendar {
+  display:grid;
+  grid-template-columns:repeat(7, 1fr);
+  gap:10px;
+  width:100%;
+  box-sizing:border-box;
+}
+.weekdaysContainer { margin-bottom:8px; font-weight:700; text-align:center; padding:0 6px; }
+
+/* Cada día */
+.day {
+  background:white;
+  border-radius:12px;
+  min-height:120px;
+  padding:10px;
+  position:relative;
+  box-shadow:0 2px 8px rgba(2,6,23,0.06);
+  display:flex; flex-direction:column;
+  transition:transform .14s, box-shadow .14s;
+}
+.day:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(2,6,23,0.08); }
+
+.day .worker-preview-container { margin-top:8px; overflow-y:auto; flex-grow:1; }
+
+/* marcadores */
+.weekend { background-color:#eef7ff; }
+.today { background-color:#1e3a8a; color:white; }
+
+/* añadir trabajador */
+.add-btn { position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%; background:#16a34a; color:white; border:none; display:flex; align-items:center; justify-content:center; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+.add-btn:hover { transform:translateY(-2px); background:#15803d; }
+
+/* Botones */
+.controls { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+.back-btn { background:#374151; color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; }
+.back-btn:hover { background:#111827; }
+
+/* Modal */
+.modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); justify-content:center; align-items:center; z-index:9999; }
+.modal-content { background:white; padding:20px; border-radius:12px; width:92%; max-width:640px; max-height:90%; overflow:auto; box-shadow:0 10px 30px rgba(2,6,23,0.2); }
+.close { float:right; cursor:pointer; color:#ef4444; font-size:20px; }
+
+/* Formularios */
+label { display:block; margin-top:10px; font-weight:600; }
+input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #d1d5db; box-sizing:border-box; }
+.work-block { margin-top:10px; padding:10px; border-radius:8px; background:#f8fafc; border:1px solid #e6eef8; }
+.remove-btn { background:#ef4444; color:white; border:none; padding:6px 10px; margin-top:8px; border-radius:8px; cursor:pointer; }
+.add-work-btn { background:#0ea5a3; color:white; border:none; padding:8px 10px; margin-top:8px; border-radius:8px; cursor:pointer; }
+
+/* Resumen botones */
+.summary-btn { margin-left:8px; padding:6px 8px; font-size:0.9rem; cursor:pointer; border-radius:6px; border:none; }
+.summary-btn.edit { background:#2563eb; color:white; }
+.summary-btn.delete { background:#ef4444; color:white; }
+
+/* Cost modal specifics */
+#costModal .modal-content { max-width:520px; }
+#costInputs div { margin-bottom:8px; }
+
+/* Responsive */
+@media(max-width:900px){
+  .weekdaysContainer, #calendar { grid-template-columns:repeat(7, 140px); }
+  #calendarContainer { overflow-x:auto; }
+}
+@media(max-width:600px){
+  .header { padding:8px; }
+  #monthHeader { grid-template-columns:1fr; gap:6px; text-align:center; }
+  #monthHeader button { width:100%; }
+  .weekdaysContainer, #calendar { grid-template-columns:repeat(7, 120px); }
+  .day { min-height:90px; padding:8px; }
+  #calendarContainer { height: calc(100% - 200px); }
+}
+</style>
+</head>
+<body>
+<div id="loadingView" style="
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  font-size:20px;
+  font-family:Arial;
+  background:#f3f4f6;
+">
+  Cargando aplicación...
+</div>
+
+<div id="loginView" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8;">
+
+  <div style="
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    width:320px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+  ">
+    <h2 style="text-align:center;margin-bottom:15px;">Acceso a Partes MMX</h2>
+
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Contraseña">
+
+    <button onclick="login()" class="back-btn" style="width:100%; margin-top:12px;">
+      Entrar
+    </button>
+
+    <button onclick="register()" class="back-btn" style="
+      width:100%;
+      margin-top:8px;
+      background:#2563eb;
+    ">
+      Registrarse
+    </button>
+  </div>
+</div>
+<div id="appView" style="display:none">
+
+
+<div class="header">
+  <div class="header-left">
+    <h1>Partes de Obra MMX</h1>
+    <p id="selectedCompanyName"></p>
+  </div>
+  <div>
+    <div class="controls">
+      <button id="showMenuBtn" class="back-btn">Empresas</button>
+      <button id="exportBtn" class="back-btn">📥 Exportar a Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU EMPRESAS -->
+<div id="companyMenu">
+  <h2>Empresas</h2>
+  <!-- Email del usuario conectado -->
+  <p id="currentUserEmail" style="font-size:0.9rem; color:#555; margin-bottom:8px;"></p>
+  
+  <div id="companyList"></div>
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+    <input type="text" id="newCompanyName" placeholder="Nueva empresa">
+    <button onclick="addCompany()" class="back-btn">Añadir</button>
+  </div>
+  
+  <div style="margin-top:10px;">
+    <button id="logoutBtn" class="back-btn" style="background:#ef4444; width:100%;">Cerrar sesión / Cambiar usuario</button>
+  </div>
+</div>
+
+<!-- VISTA CALENDARIO -->
+<div id="calendarView">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="display:flex; gap:8px;">
+      <button class="back-btn" onclick="backToMenu()">← Volver</button>
+    </div>
+    <div id="monthHeader">
+      <button onclick="prevMonth()">« Mes Anterior</button>
+      <div id="calendarTitle"></div>
+      <button onclick="nextMonth()">Mes Siguiente »</button>
+    </div>
+    <div style="width:120px;"></div>
+  </div>
+
+  <div id="calendarContainer">
+    <div class="weekdaysContainer">
+      <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+    </div>
+    <div id="calendar"></div>
+  </div>
+</div>
+
+<!-- Modal principal para añadir/editar y ver resumen -->
+<div id="calendarModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div id="modalContentArea"></div>
+  </div>
+</div>
+
+<!-- Modal de costes y fechas para export -->
+<div id="costModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeCostModal()">&times;</span>
+    <h2>Coste por Rango y Fecha</h2>
+    <div id="costInputs"></div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button onclick="confirmCosts()" class="back-btn">Confirmar</button>
+      <button onclick="closeCostModal()" class="back-btn" style="background:#6b7280">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Librerías -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+// ==================== UTIL HELPERS PARA FECHAS ====================
+
+// Formatea número con dos dígitos
+function pad(n){ return String(n).padStart(2,'0'); }
+
+// Devuelve 'YYYY-MM-DD' garantizado con ceros a la izquierda
+function toDateInputValue(date){
+  const y = date.getFullYear();
+  const m = pad(date.getMonth()+1);
+  const d = pad(date.getDate());
+  return `${y}-${m}-${d}`;
+}
+
+// Dado un dateKey en cualquiera de los formatos 'YYYY-M-D' o 'YYYY-MM-DD', devuelve Date en hora local
+function parseDateKey(dateKey){
+  const parts = dateKey.split('-').map(p => Number(p));
+  return new Date(parts[0], parts[1]-1, parts[2]);
+}
+
+// Formatea dateKey (acepta 'YYYY-M-D' y normaliza a 'DD/MM/YYYY' para mostrar)
+function formatDate(dateStr){
+  const parts = dateStr.split('-').map(p=>p.padStart(2,'0'));
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+// ==================== FIN HELPERS ====================
+
+// ==== Firebase ====
+const firebaseConfig = {
+  apiKey: "AIzaSyDmj5JbSO0UgOcW_5STsH1EfVSA5K3OYTg",
+  authDomain: "partes-pruebas.firebaseapp.com",
+  databaseURL: "https://partes-pruebas-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "partes-pruebas",
+  storageBucket: "partes-pruebas.firebasestorage.app",
+  messagingSenderId: "495616775624",
+  appId: "1:495616775624:web:a7c9d711598003bea45cfd"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+
+// ==== Variables Globales ====
+let companyData = {};
+let currentCompany = null;
+let currentUser = null;
+let currentDate = null;
+let currentMonth = null;
+let currentYear = null;
+let costByRank = {};
+let exportCallback = null;
+  
+// ==== Firebase helpers ====
+// Guardar datos solo del usuario actual
+function saveToStorage(){
+  if(!currentUser || !currentCompany) {
+    console.warn("saveToStorage cancelado: usuario o empresa nulos");
+    return;
+  }
+
+  db.ref(`users/${currentUser.uid}/companies/${currentCompany}`)
+    .set(companyData[currentCompany])
+    .then(() => {
+      console.log("Datos guardados correctamente en Firebase");
+    })
+    .catch(err => {
+      console.error("ERROR guardando en Firebase:", err);
+      alert("Error guardando datos en la nube: " + err.message);
+    });
+}
+
+
+// Cargar todas las empresas del usuario actual
+function loadFromStorage(callback){
+  if(!currentUser){
+    companyData = {};
+    if(callback) callback();
+    return;
+  }
+
+  db.ref(`users/${currentUser.uid}/companies`)
+    .once('value')
+    .then(snapshot => {
+      companyData = snapshot.val() || {};
+      if(callback) callback();
+    });
+}
+
+
+
+// ==== UI: menu / compañías ====
+function showMenu(){
+  document.getElementById('companyMenu').style.display = 'block';
+  document.getElementById('calendarView').style.display = 'none';
+  document.getElementById('selectedCompanyName').textContent = '';
+
+  if(!currentUser) {
+    console.warn("Usuario no definido, showMenu cancelado");
+    return;
+  }
+
+  // Mostrar email del usuario
+  document.getElementById('currentUserEmail').textContent = "Conectado como: " + currentUser.email;
+
+  // Cargar empresas desde Firebase y luego renderizar
+  loadFromStorage(() => {
+    renderCompanyList();
+  });
+}
+
+
+
+function addCompany(){
+  if(!currentUser) return alert("Usuario no autenticado");
+
+  const name = document.getElementById('newCompanyName').value.trim();
+  if(!name) return;
+  if(companyData[name]) {
+    alert('Ya existe esa empresa');
+    return;
+  }
+
+  // Crear nueva empresa localmente
+  companyData[name] = { calendar: {}, templates: [] };
+  document.getElementById('newCompanyName').value = '';
+
+  currentCompany = name;
+
+  // Guardar en Firebase
+  saveToStorage();
+
+  // 🔹 Actualizar la lista inmediatamente, sin esperar a Firebase
+  renderCompanyList();
+}
+
+
+
+
+
+
+function renderCompanyList(){
+  const container = document.getElementById('companyList');
+  container.innerHTML = '';
+  Object.keys(companyData).sort().forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'company-item';
+    div.textContent = c;
+    div.onclick = () => openCompany(c);
+    container.appendChild(div);
+  });
+
+}
+function openCompany(name){
+  currentCompany = name;
+  if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
+  if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
+  if(!companyData[currentCompany].templates) companyData[currentCompany].templates = [];
+
+  const today = new Date();
+  currentMonth = today.getMonth();
+  currentYear = today.getFullYear();
+  document.getElementById('companyMenu').style.display = 'none';
+  document.getElementById('calendarView').style.display = 'block';
+  document.getElementById('selectedCompanyName').textContent = name;
+  renderCalendar();
+}
+function backToMenu(){ currentCompany = null; showMenu(); }
+
+function prevMonth(){ currentMonth--; if(currentMonth < 0){ currentMonth = 11; currentYear--; } renderCalendar(); }
+function nextMonth(){ currentMonth++; if(currentMonth > 11){ currentMonth = 0; currentYear++; } renderCalendar(); }
+
+function logout() {
+  auth.signOut()
+    .then(() => {
+      // 🔹 Limpiar todas las variables globales
+      currentUser = null;
+      currentCompany = null;
+      companyData = {};
+      currentDate = null;
+      currentMonth = null;
+      currentYear = null;
+      costByRank = {};
+      exportCallback = null;
+
+      // 🔹 Limpiar la UI
+      document.getElementById('appView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'flex';
+      document.getElementById('currentUserEmail').textContent = '';
+
+      // 🔹 Limpiar menús y calendarios
+      document.getElementById('companyList').innerHTML = '';
+      document.getElementById('calendar').innerHTML = '';
+      document.getElementById('selectedCompanyName').textContent = '';
+    })
+    .catch(err => alert("Error cerrando sesión: " + err.message));
+}
+document.getElementById('logoutBtn').onclick = logout;
+document.getElementById('showMenuBtn').onclick = showMenu;
+
+  
+// ==== Render calendario ====
+// IMPORTANTE: ahora normalizamos dateKey a 'YYYY-MM-DD' con ceros a la izquierda
+function renderCalendar(){
+  const calendarDiv = document.getElementById('calendar');
+  calendarDiv.innerHTML = '';
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('calendarTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+  const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
+  let firstDay = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7; // hacer Lun=0
+  // relleno de celdas vacías hasta el primer día
+  for(let i=0;i<firstDay;i++){
+    const empty = document.createElement('div');
+    empty.className = 'day';
+    empty.style.visibility = 'hidden';
+    calendarDiv.appendChild(empty);
+  }
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+  for(let day=1; day<=daysInMonth; day++){
+    const dateObj = new Date(currentYear, currentMonth, day);
+    // <-- FIX: dateKey siempre en formato 'YYYY-MM-DD'
+    const dateKey = `${currentYear}-${pad(currentMonth+1)}-${pad(day)}`;
+    const div = document.createElement('div');
+    div.className = 'day';
+    if(((dateObj.getDay()+6)%7) >= 5) div.classList.add('weekend');
+    if(dateKey === todayKey) div.classList.add('today');
+
+    const dayNumber = document.createElement('div');
+    dayNumber.textContent = day;
+    dayNumber.style.position = 'absolute';
+    dayNumber.style.top = '8px';
+    dayNumber.style.left = '10px';
+    dayNumber.style.fontWeight = '700';
+    div.appendChild(dayNumber);
+
+    const btn = document.createElement('button');
+    btn.textContent = '+';
+    btn.className = 'add-btn';
+    btn.onclick = (ev) => { ev.stopPropagation(); openModal(dateKey, false); };
+    div.appendChild(btn);
+
+    const dayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
+
+    // Compatibilidad: si la data está almacenada con claves sin padding,
+    // buscamos también con la versión sin pad (por compatibilidad retroactiva)
+    if(!dayData && companyData[currentCompany] && companyData[currentCompany].calendar){
+      // buscar posibles claves que coincidan con el mismo día pero distinto formato
+      const altKey1 = `${currentYear}-${currentMonth+1}-${day}`; // e.g. 2025-11-1
+      if(companyData[currentCompany].calendar[altKey1]) {
+        // normalizamos migrando la clave al formato pad (opcional)
+        companyData[currentCompany].calendar[dateKey] = companyData[currentCompany].calendar[altKey1];
+        delete companyData[currentCompany].calendar[altKey1];
+      }
+    }
+
+    const finalDayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
+
+    if(finalDayData && finalDayData.length > 0){
+      const preview = document.createElement('div');
+      preview.className = 'worker-preview-container';
+      finalDayData.forEach(w => {
+        const p = document.createElement('div');
+        p.textContent = `${w.name} (${w.total}h)`;
+        p.style.fontSize = '0.9rem';
+        preview.appendChild(p);
+      });
+      div.appendChild(preview);
+    }
+
+    div.onclick = () => { if(companyData[currentCompany].calendar[dateKey]) showDaySummary(dateKey); else openModal(dateKey,false); };
+    calendarDiv.appendChild(div);
+  }
+}
+
+// ==== Modal: abrir, añadir, editar ====
+function openModal(date, readonly=false, entry=null, entryIndex=null){
+  currentDate = date;
+  document.getElementById('calendarModal').style.display = 'flex';
+  const modalContent = document.getElementById('modalContentArea');
+
+  modalContent.innerHTML = `
+    <h2>${entry ? 'Editar Trabajador' : 'Registrar Trabajadores'} - ${formatDate(date)}</h2>
+    <div id="quickForm">
+      <label>Trabajador frecuente:<select id="quickWorkerTemplate"></select></label>
+      <label>Nombre trabajador:<input type="text" id="quickWorkerName"></label>
+      <label>Rango:<input type="text" id="quickWorkerRank"></label>
+      <div id="workEntries"></div>
+      <button type="button" class="add-work-btn" onclick="addWorkEntry()">+ Añadir trabajo</button>
+      <label>Horas Totales:<input type="number" id="totalHours" readonly></label>
+      <div style="margin-top:12px;"><button class="back-btn" onclick="saveEntry(${entryIndex !== null ? entryIndex : 'null'})">${entry ? 'Actualizar' : 'Guardar'}</button></div>
+    </div>
+  `;
+
+  const quickTemplate = document.getElementById('quickWorkerTemplate');
+  quickTemplate.innerHTML = '<option value=""></option>';
+  if(companyData[currentCompany] && companyData[currentCompany].templates){
+    companyData[currentCompany].templates.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.name;
+      opt.textContent = `${t.name} (${t.rank})`;
+      quickTemplate.appendChild(opt);
+    });
+  }
+
+  quickTemplate.onchange = () => {
+    const t = (companyData[currentCompany].templates || []).find(x => x.name === quickTemplate.value);
+    if(t){
+      document.getElementById('quickWorkerName').value = t.name;
+      document.getElementById('quickWorkerRank').value = t.rank;
+    }
+  };
+
+  document.getElementById('quickWorkerName').value = entry ? entry.name : '';
+  document.getElementById('quickWorkerRank').value = entry ? entry.rank : '';
+  document.getElementById('workEntries').innerHTML = '';
+
+  if(entry){
+    entry.works.forEach(w => addWorkEntry(w.work, w.hours));
+  } else {
+    addWorkEntry();
+  }
+
+  updateTotalHours();
+}
+function closeModal(){ document.getElementById('calendarModal').style.display = 'none'; }
+
+function addWorkEntry(work='', hours=''){
+  const container = document.getElementById('workEntries');
+  const div = document.createElement('div');
+  div.className = 'work-block';
+  div.innerHTML = `
+    <label>Trabajo realizado: <input type="text" class="workName" value="${work}" list="workSuggestions"></label>
+    <label>Horas: <input type="number" class="workHours" value="${hours}" min="0"></label>
+    <button class="remove-btn" type="button">Eliminar</button>
+  `;
+  const datalist = document.createElement('datalist');
+  datalist.id = 'workSuggestions';
+  div.querySelector('.workName').setAttribute('list','workSuggestions');
+  // rellenar sugerencias con trabajos previos
+  const previousWorks = new Set();
+  if(companyData[currentCompany] && companyData[currentCompany].calendar){
+    for(const day in companyData[currentCompany].calendar){
+      companyData[currentCompany].calendar[day].forEach(entry => {
+        entry.works.forEach(w => previousWorks.add(w.work));
+      });
+    }
+  }
+  previousWorks.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w;
+    datalist.appendChild(opt);
+  });
+  div.appendChild(datalist);
+
+  div.querySelector('.remove-btn').onclick = () => { div.remove(); updateTotalHours(); };
+  div.querySelector('.workHours').oninput = updateTotalHours;
+  container.appendChild(div);
+}
+
+function updateTotalHours(){
+  const hours = Array.from(document.querySelectorAll('.workHours')).reduce((sum,i)=>sum + Number(i.value || 0), 0);
+  const el = document.getElementById('totalHours');
+  if(el) el.value = hours;
+}
+
+function saveEntry(entryIndex = null){
+  const name = document.getElementById('quickWorkerName').value.trim();
+  const rank = document.getElementById('quickWorkerRank').value.trim();
+  if(!name) return alert("Ingrese nombre del trabajador");
+  const works = Array.from(document.querySelectorAll('.work-block')).map(b => ({
+    work: b.querySelector('.workName').value,
+    hours: Number(b.querySelector('.workHours').value || 0)
+  }));
+  const total = works.reduce((s,w)=>s + w.hours, 0);
+  if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
+  if(!companyData[currentCompany].calendar[currentDate]) companyData[currentCompany].calendar[currentDate] = [];
+
+  if(entryIndex !== null && entryIndex !== 'null'){
+    companyData[currentCompany].calendar[currentDate][entryIndex] = { name, rank, works, total };
+  } else {
+    companyData[currentCompany].calendar[currentDate].push({ name, rank, works, total });
+    // guardo plantilla si no existe
+    if(!companyData[currentCompany].templates.find(t => t.name === name)){
+      companyData[currentCompany].templates.push({ name, rank });
+    }
+  }
+  saveToStorage();
+  renderCalendar();
+  closeModal();
+}
+
+// ==== Mostrar resumen de un día ====
+function showDaySummary(dateKey){
+  const entries = companyData[currentCompany].calendar[dateKey];
+  const modalContent = document.getElementById('modalContentArea');
+  modalContent.innerHTML = `<h2>Resumen Día - ${formatDate(dateKey)}</h2><div id="daySummary"></div>`;
+  const summaryDiv = document.getElementById('daySummary');
+
+  entries.forEach((e, index) => {
+    const workerDiv = document.createElement('div');
+    workerDiv.style.marginBottom = '8px';
+    workerDiv.innerHTML = `<h3 style="margin:0 0 6px 0">${e.name} (${e.rank})</h3>`;
+    e.works.forEach(w => {
+      const p = document.createElement('div');
+      p.textContent = `${w.work}: ${w.hours}h`;
+      workerDiv.appendChild(p);
+    });
+    const totalP = document.createElement('div');
+    totalP.textContent = `Total Horas: ${e.total}`;
+    workerDiv.appendChild(totalP);
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Editar';
+    editBtn.className = 'summary-btn edit';
+    editBtn.onclick = () => openModal(dateKey, false, e, index);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Eliminar';
+    deleteBtn.className = 'summary-btn delete';
+    deleteBtn.onclick = () => {
+      if(confirm('Eliminar este registro?')){
+        entries.splice(index,1);
+        if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+        saveToStorage();
+        showDaySummary(dateKey);
+        renderCalendar();
+      }
+    };
+
+    workerDiv.appendChild(editBtn);
+    workerDiv.appendChild(deleteBtn);
+    workerDiv.appendChild(document.createElement('hr'));
+    summaryDiv.appendChild(workerDiv);
+  });
+
+  document.getElementById('calendarModal').style.display = 'flex';
+}
+
+// ==== Export Excel con rango de fechas y costes ====
+// Al pulsar Exportar: mostrar modal con inputs de fecha inicio/fin y costes por rango
+document.getElementById('exportBtn').onclick = () => {
+  if(!currentCompany) return alert("Seleccione una empresa");
+  const ranks = new Set();
+  const calendar = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar : {};
+  for(const dateKey in calendar){
+    calendar[dateKey].forEach(e => ranks.add(e.rank));
+  }
+  if(ranks.size === 0) return alert("No hay datos para exportar");
+
+  const container = document.getElementById('costInputs');
+  container.innerHTML = '';
+
+  // ===== Calculamos rango mínimo y máximo de fechas presentes en el calendario =====
+  let minDate = null;
+  let maxDate = null;
+  for(const dk in calendar){
+    const d = parseDateKey(dk);
+    if(!minDate || d < minDate) minDate = d;
+    if(!maxDate || d > maxDate) maxDate = d;
+  }
+  // Si no hay datos minDate/maxDate se dejan sin valor
+  const minValue = minDate ? toDateInputValue(minDate) : '';
+  const maxValue = maxDate ? toDateInputValue(maxDate) : '';
+
+  // Inputs de fechas (con default al rango existente y con min/max fijados)
+  const dateDiv = document.createElement('div');
+  dateDiv.innerHTML = `
+    <label>Fecha inicio: <input type="date" id="exportStartDate" value="${minValue}" min="${minValue}" max="${maxValue}"></label>
+    <label>Fecha fin: <input type="date" id="exportEndDate" value="${maxValue}" min="${minValue}" max="${maxValue}"></label>
+  `;
+  container.appendChild(dateDiv);
+
+  // Inputs de coste por rango
+  ranks.forEach(r => {
+    const div = document.createElement('div');
+    div.innerHTML = `<label>${r}: <input type="number" min="0" value="0" data-rank="${r}"></label>`;
+    container.appendChild(div);
+  });
+
+  exportCallback = exportExcel;
+  document.getElementById('costModal').style.display = 'flex';
+};
+
+function closeCostModal(){ document.getElementById('costModal').style.display = 'none'; }
+
+function confirmCosts(){
+  // leer inputs de coste por rango
+  document.querySelectorAll('#costInputs input[data-rank]').forEach(i => {
+    costByRank[i.dataset.rank] = parseFloat(i.value) || 0;
+  });
+
+  // leer fechas
+  const startDateRaw = document.getElementById('exportStartDate').value;
+  const endDateRaw = document.getElementById('exportEndDate').value;
+  if(!startDateRaw || !endDateRaw) return alert("Seleccione fecha inicio y fin");
+
+  // Validación y normalización (asegura formato YYYY-MM-DD)
+  const startDate = startDateRaw;
+  const endDate = endDateRaw;
+
+  // validar orden fechas
+  const sCheck = new Date(`${startDate}T00:00:00`);
+  const eCheck = new Date(`${endDate}T23:59:59`);
+  if(sCheck > eCheck) return alert("La fecha de inicio no puede ser posterior a la fecha de fin");
+
+  // llamar al callback pasando fechas (si existe)
+  if(exportCallback) exportCallback(startDate, endDate);
+  closeCostModal();
+}
+
+function exportExcel(startDate, endDate) {
+  const calendar = companyData[currentCompany].calendar;
+  let data = [["Fecha", "Nombre", "Rango", "Coste", "Trabajo", "Horas", "Importe"]];
+  let totalPorTrabajador = {};
+  let totalPorTrabajo = {};
+  let importePorTrabajo = {};
+
+  // ✅ Convertir fechas a enteros YYYYMMDD para comparar sin problemas de zona horaria
+  const startNum = parseInt(startDate.replaceAll("-", ""));
+  const endNum = parseInt(endDate.replaceAll("-", ""));
+
+  for (const dateKey in calendar) {
+    const dateNum = parseInt(dateKey.replaceAll("-", ""));
+    if (dateNum < startNum || dateNum > endNum) continue; // ✅ comparación directa de números
+
+    calendar[dateKey].forEach(entry => {
+      entry.works.forEach(work => {
+        const coste = costByRank[entry.rank] || 0;
+        const importe = coste * work.hours;
+        data.push([formatDate(dateKey), entry.name, entry.rank, coste, work.work, work.hours, importe]);
+
+        totalPorTrabajador[entry.name] = (totalPorTrabajador[entry.name] || 0) + work.hours;
+        totalPorTrabajo[work.work] = (totalPorTrabajo[work.work] || 0) + work.hours;
+        importePorTrabajo[work.work] = (importePorTrabajo[work.work] || 0) + importe;
+      });
+    });
+  }
+
+  data.push([]);
+  data.push(["Resumen total por trabajador"]);
+  data.push(["Nombre", "Horas Totales"]);
+  for (const t in totalPorTrabajador) data.push([t, totalPorTrabajador[t]]);
+
+  data.push([]);
+  data.push(["Resumen total por Trabajo"]);
+  data.push(["Trabajo", "Horas Totales", "Importe Total"]);
+  for (const w in totalPorTrabajo)
+    data.push([w, totalPorTrabajo[w], importePorTrabajo[w]]);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, currentCompany);
+  XLSX.writeFile(
+    wb,
+    `${currentCompany}_partes_obra_${startDate}_a_${endDate}.xlsx`
+  );
+}
+
+
+// ==== PWA Service Worker (opcional) ====
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(()=>console.log("Service Worker registrado")).catch(err=>console.log("Error Service Worker:",err));
+}
+
+function login(){
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPassword').value;
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(err => alert(err.message));
+}
+
+function register(){
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPassword').value;
+
+  auth.createUserWithEmailAndPassword(email, pass)
+    .catch(err => alert(err.message));
+}
+
+
+// ==== Scroll sincronizado (cabeceras) ====
+const calContainer = document.getElementById('calendarContainer');
+const weekdaysContainer = document.querySelector('.weekdaysContainer');
+if(calContainer && weekdaysContainer){
+  calContainer.onscroll = function(){ weekdaysContainer.scrollLeft = this.scrollLeft; }
+}
+
+// ==== Inicializar ====
+auth.onAuthStateChanged(user => {
+  document.getElementById('loadingView').style.display = 'none';
+
+  if(user){
+    currentUser = user;
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('appView').style.display = 'block';
+    
+    // 🔹 Mostrar menú de empresas correctamente
+    showMenu();
+
+  } else {
+    currentUser = null;
+    document.getElementById('appView').style.display = 'none';
+    document.getElementById('loginView').style.display = 'flex';
+  }
+});
+
+
+
+
+
+</script>
+
+</div> <!-- cierre appView -->
+
+</body>
+</html>
