@@ -288,10 +288,10 @@ let exportCallback = null;
 function saveToStorage(){
   if(!currentUser || !currentCompany) {
     console.warn("saveToStorage cancelado: usuario o empresa nulos");
-    return;
+    return Promise.reject("Usuario o empresa nulos");
   }
 
-  db.ref(`users/${currentUser.uid}/companies/${currentCompany}`)
+  return db.ref(`users/${currentUser.uid}/companies/${currentCompany}`)
     .set(companyData[currentCompany])
     .then(() => {
       console.log("Datos guardados correctamente en Firebase");
@@ -299,8 +299,10 @@ function saveToStorage(){
     .catch(err => {
       console.error("ERROR guardando en Firebase:", err);
       alert("Error guardando datos en la nube: " + err.message);
+      throw err;
     });
 }
+
 
 
 // Cargar todas las empresas del usuario actual
@@ -343,25 +345,22 @@ function showMenu(){
 }
 
 
-
 function addCompany(){
   if(!currentUser) return alert("Usuario no autenticado");
 
   const name = document.getElementById('newCompanyName').value.trim();
-  if(!name) return;
-  if(companyData[name]) {
-    alert('Ya existe esa empresa');
-    return;
-  }
+  if(!name) return alert("Introduce el nombre de la empresa");
+  if(companyData[name]) return alert('Ya existe esa empresa');
 
+  // 🔹 Creamos la empresa en la variable local
   companyData[name] = { calendar:{}, templates:[] };
   document.getElementById('newCompanyName').value = '';
 
-  // Guardar y esperar confirmación
+  // 🔹 Guardamos en Firebase y luego actualizamos la UI
   saveToStorage().then(()=>{
-    renderCompanyList();
-    currentCompany = name;
-    openCompany(name);
+    renderCompanyList();      // actualizar menú de empresas
+    currentCompany = name;    // seleccionamos la nueva empresa
+    openCompany(name);        // abrir el calendario automáticamente
   }).catch(err=>{
     alert("Error guardando empresa: " + err.message);
   });
