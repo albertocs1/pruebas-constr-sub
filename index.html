@@ -125,24 +125,44 @@ function login(){
 
 // Registro
 function register(){
-  const email=document.getElementById('registerEmail').value.trim();
-  const password=document.getElementById('registerPassword').value.trim();
-  const companyName=document.getElementById('registerCompanyName').value.trim();
-  const roleInput=document.querySelector('input[name="companyRole"]:checked');
-  if(!email||!password||!companyName||!roleInput){alert('Rellena todos los campos y selecciona tipo de empresa');return;}
-  const role=roleInput.value;
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value.trim();
+  const companyName = document.getElementById('registerCompanyName').value.trim();
+  const roleInput = document.querySelector('input[name="companyRole"]:checked');
+  if(!email||!password||!companyName||!roleInput) {
+    alert("Rellena todos los campos y selecciona tipo de empresa");
+    return;
+  }
+  const role = roleInput.value;
+
   auth.createUserWithEmailAndPassword(email,password).then(cred=>{
-    const uid=cred.user.uid;
-    return db.ref('users/'+uid).set({email, role, companyName, createdAt:Date.now()});
+    const uid = cred.user.uid;
+
+    // 1️⃣ Guardamos usuario
+    return db.ref('users/'+uid).set({
+      email,
+      role,
+      companyName,
+      createdAt: Date.now(),
+      companies: { [companyName]: { calendar:{}, templates:[] } } // 🔹 empresa inicial
+    });
   }).then(()=>{
-    currentUser=auth.currentUser;
-    currentUser.role=role;
-    currentUser.companyName=companyName;
-    document.getElementById('registerView').style.display='none';
-    document.getElementById('appView').style.display='block';
-    showMenu();
+    currentUser = auth.currentUser;
+    currentUser.role = role;
+    currentUser.companyName = companyName;
+
+    // 2️⃣ Cargamos empresas desde Firebase
+    loadFromStorage(() => {
+      document.getElementById('registerView').style.display='none';
+      document.getElementById('appView').style.display='block';
+
+      // 3️⃣ Abrimos la empresa recién creada automáticamente
+      currentCompany = companyName;
+      openCompany(companyName);
+    });
   }).catch(err=>alert(err.message));
 }
+
 </script>
 
 <!-- MENU EMPRESAS -->
@@ -334,20 +354,19 @@ function addCompany(){
     return;
   }
 
-  // 1️⃣ Crear nueva empresa localmente
-  companyData[name] = { calendar: {}, templates: [] };
+  companyData[name] = { calendar:{}, templates:[] };
   document.getElementById('newCompanyName').value = '';
 
-  // 2️⃣ Guardar en Firebase
-  saveToStorage();
-
-  // 3️⃣ Actualizar lista de empresas para que aparezca en el menú
-  renderCompanyList();
-
-  // 4️⃣ Seleccionar y abrir la empresa recién creada
-  currentCompany = name;
-  openCompany(name);
+  // Guardar y esperar confirmación
+  saveToStorage().then(()=>{
+    renderCompanyList();
+    currentCompany = name;
+    openCompany(name);
+  }).catch(err=>{
+    alert("Error guardando empresa: " + err.message);
+  });
 }
+
 
 
 
