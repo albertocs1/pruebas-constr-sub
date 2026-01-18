@@ -342,15 +342,25 @@ function addCompany(){
   companyData[name] = { calendar: {}, templates: [] };
   document.getElementById('newCompanyName').value = '';
 
-saveToStorage();
-
-loadFromStorage(() => {
-  renderCompanyList();
+  // 2️⃣ Asignar currentCompany antes de guardar
   currentCompany = name;
-  openCompany(name);
-});
 
+  // 3️⃣ Guardar en Firebase y esperar confirmación
+  db.ref(`users/${currentUser.uid}/companies/${name}`)
+    .set(companyData[name])
+    .then(() => {
+      console.log(`Empresa "${name}" guardada correctamente en Firebase`);
+
+      // 4️⃣ Actualizar menú y abrir calendario
+      renderCompanyList();
+      openCompany(name);
+    })
+    .catch(err => {
+      console.error("Error guardando empresa:", err);
+      alert("Error guardando empresa: " + err.message);
+    });
 }
+
 
 
 
