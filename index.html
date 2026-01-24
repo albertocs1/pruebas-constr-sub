@@ -28,6 +28,7 @@ button{cursor:pointer}
   animation:spin 1s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+#calendar div{display:inline-block; width:30px; text-align:center; margin:2px;}
 </style>
 </head>
 
@@ -116,104 +117,48 @@ async function login() {
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
 
-  if (!email || !password) {
-    alert('Ingrese email y contraseña');
-    return;
-  }
+  if (!email || !password) { alert('Ingrese email y contraseña'); return; }
 
   try {
-    // 🔹 Iniciar sesión en Firebase
-    const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
-    const uid = cred.user.uid;
-
-    // 🔹 Esperar a que el perfil exista en la base de datos
-    let userProfile = null;
-    for (let attempts = 0; attempts < 10; attempts++) {
-      const snapshot = await firebase.database().ref('users/' + uid).once('value');
-      userProfile = snapshot.val();
-      if (userProfile) break;
-      await new Promise(res => setTimeout(res, 200)); // espera 200ms antes de reintentar
-    }
-
-    if (!userProfile) {
-      alert('Perfil de usuario no encontrado');
-      await firebase.auth().signOut();
-      return;
-    }
-
-    // 🔹 Guardar datos globales
+    const cred = await auth.signInWithEmailAndPassword(email, password);
     currentUser = cred.user;
-    currentUser.role = userProfile.role;          // rol: "constructora" o "subcontrata"
-    currentUser.companyName = userProfile.companyName || '';
 
-    // 🔹 Ocultar login y mostrar app
-    document.getElementById('loginView').style.display = 'none';
-    document.getElementById('appView').style.display = 'block';
+    // Esperar perfil
+    const snapshot = await db.ref('users/' + currentUser.uid).once('value');
+    if(!snapshot.exists()){ alert('Perfil no encontrado'); await auth.signOut(); return; }
+    currentUser.role = snapshot.val().role;
 
-    // 🔹 Mostrar menú de empresas
-    showMenu();
+    hide('loginView'); show('appView'); showMenu();
 
-  } catch (error) {
-    alert('Error en login: ' + error.message);
-  }
+  } catch (error) { alert('Error en login: '+error.message); }
 }
 
-
-/* ================= AUTH ================= */
+/* ================= AUTH STATE ================= */
 auth.onAuthStateChanged(user=>{
-  if(!user){
-    hide('loadingScreen');
-    show('loginView');
-    hide('appView');
-    return;
-  }
-
+  if(!user){ hide('loadingScreen'); show('loginView'); hide('appView'); return; }
   currentUser=user;
-  waitForProfile(user.uid);
-});
-
-/* ================= PERFIL ================= */
-function waitForProfile(uid,attempt=0){
-  if(attempt>15){
-    alert("No se pudo cargar el perfil");
-    auth.signOut();
-    return;
-  }
-
-  db.ref('users/'+uid).once('value').then(s=>{
-    if(!s.exists()){
-      setTimeout(()=>waitForProfile(uid,attempt+1),200);
-      return;
-    }
-
-    currentUser.role=s.val().role;
+  show('loadingScreen');
+  db.ref('users/'+user.uid).once('value').then(s=>{
+    if(s.exists()) currentUser.role=s.val().role;
     loadCompanies();
   });
-}
+});
 
 /* ================= EMPRESAS ================= */
-function loadCompanies(){
-  db.ref('users/'+currentUser.uid+'/companies')
-    .once('value')
-    .then(s=>{
-      companyData=s.val()||{};
-      showMenu();
-    });
+async function loadCompanies(){
+  const snapshot = await db.ref('users/' + currentUser.uid + '/companies').once('value');
+  companyData = snapshot.val() || {};
+  showMenu();
 }
 
 function showMenu(){
-  hide('loadingScreen');
-  hide('calendarView');
-  show('appView');
-  show('companyMenu');
-
-  currentUserEmail.textContent=
-    `${currentUser.email} (${currentUser.role})`;
-
+  hide('loadingScreen'); hide('calendarView'); show('appView'); show('companyMenu');
+  document.getElementById('currentUserEmail').textContent=`${currentUser.email} (${currentUser.role})`;
   renderCompanyList();
 }
 
 function renderCompanyList(){
+  const companyList=document.getElementById('companyList');
   companyList.innerHTML='';
   Object.keys(companyData).forEach(n=>{
     const d=document.createElement('div');
@@ -225,146 +170,83 @@ function renderCompanyList(){
 
 async function addCompany(){
   const name = document.getElementById('newCompanyName').value.trim();
-  if(!name) { alert('Introduce un nombre'); return; }
-  if(companyData[name]) { alert('Ya existe esa empresa'); return; }
+  if(!name){ alert('Introduce un nombre'); return; }
+  if(companyData[name]){ alert('Ya existe esa empresa'); return; }
 
-  // Crear empresa localmente
-  companyData[name] = { calendar: {}, templates: [] };
-  document.getElementById('newCompanyName').value = '';
-  currentCompany = name;
+  companyData[name]={ calendar:{}, templates:[] };
+  document.getElementById('newCompanyName').value='';
+  currentCompany=name;
 
-  try {
-    // Guardar en Firebase
-    await db.ref(`users/${currentUser.uid}/companies/${name}`).set(companyData[name]);
-
-    // Actualizar lista de empresas
-    renderCompanyList();
-
-    // Abrir calendario
-    await openCompany(name);
-
-  } catch(err) {
-    console.error("Error guardando empresa:", err);
-    alert("Error guardando empresa: " + err.message);
-  }
+  await db.ref(`users/${currentUser.uid}/companies/${name}`).set(companyData[name]);
+  renderCompanyList();
+  await openCompany(name);
 }
 
 async function openCompany(name){
-  show('loadingScreen');
-  hide('companyMenu');
+  show('loadingScreen'); hide('companyMenu');
+  currentCompany=name;
+  const now=new Date();
+  currentMonth=now.getMonth();
+  currentYear=now.getFullYear();
 
-  currentCompany = name;
-  const now = new Date();
-  currentMonth = now.getMonth();
-  currentYear = now.getFullYear();
-
-  // Espera a que la empresa esté lista
+  // Esperar que la empresa exista
   await ensureCompanyReady();
-
-  // Mostrar calendario
   renderCalendar();
 }
 
-async function ensureCompanyReady() {
-  let attempts = 0;
-  while(attempts < 10){
-    // Cargar empresas desde Firebase
+async function ensureCompanyReady(){
+  let attempts=0;
+  while(attempts<10){
     const snapshot = await db.ref('users/' + currentUser.uid + '/companies').once('value');
     companyData = snapshot.val() || {};
-
-    // Si existe la empresa actual, salimos
     if(companyData[currentCompany]) return;
-
-    // Esperar 200ms antes de intentar de nuevo
-    await new Promise(res => setTimeout(res, 200));
+    await new Promise(res=>setTimeout(res,200));
     attempts++;
   }
-
-  // Si no existe tras 10 intentos, crear vacía
-  companyData[currentCompany] = { calendar:{} };
+  companyData[currentCompany]={calendar:{}};
 }
 
-
-
-
-
-function loadCompaniesAsync() {
-  return db.ref('users/' + currentUser.uid + '/companies')
-           .once('value')
-           .then(s => {
-             companyData = s.val() || {};
-           });
-}
-  
 /* ================= CALENDARIO ================= */
 function renderCalendar(){
-  hide('loadingScreen');
-  show('calendarView');
+  hide('loadingScreen'); show('calendarView');
 
-  calendar.innerHTML='';
-  calendarTitle.textContent=
-    `${currentMonth+1}/${currentYear}`;
+  const calendarEl=document.getElementById('calendar');
+  const titleEl=document.getElementById('calendarTitle');
+  calendarEl.innerHTML='';
 
+  titleEl.textContent=`${currentMonth+1}/${currentYear}`;
   const days=new Date(currentYear,currentMonth+1,0).getDate();
-
   for(let d=1;d<=days;d++){
     const cell=document.createElement('div');
     cell.textContent=d;
     cell.style.padding="8px";
     cell.style.border="1px solid #ddd";
-    calendar.appendChild(cell);
+    calendarEl.appendChild(cell);
   }
-}
-
-function backToMenu(){
-  currentCompany=null;
-  showMenu();
 }
 
 /* ================= LOGOUT ================= */
-function logout(){
-  auth.signOut();
-}
-// ===== Navegación entre login y registro =====
-function showRegister() {
-  document.getElementById('loginView').style.display = 'none';
-  document.getElementById('registerView').style.display = 'block';
-}
+function logout(){ auth.signOut(); }
 
-function showLogin() {
-  document.getElementById('registerView').style.display = 'none';
-  document.getElementById('loginView').style.display = 'block';
-}
-// ===== Registro de usuario con rol =====
-async function register() {
-  const email = document.getElementById('regEmail').value.trim();
-  const password = document.getElementById('regPassword').value;
-  const role = document.getElementById('regRole').value;
+/* ================= NAV LOGIN/REGISTER ================= */
+function showRegister(){ hide('loginView'); show('registerView'); }
+function showLogin(){ hide('registerView'); show('loginView'); }
 
-  if (!email || !password) {
-    alert('Rellena email y contraseña');
-    return;
-  }
+/* ================= REGISTRO ================= */
+async function register(){
+  const email=document.getElementById('regEmail').value.trim();
+  const password=document.getElementById('regPassword').value;
+  const role=document.getElementById('regRole').value;
 
-  try {
-    // Crear usuario en Firebase Auth
-    const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+  if(!email || !password){ alert('Rellena email y contraseña'); return; }
 
-    // Guardar perfil en la base de datos
-    await firebase.database().ref('users/' + cred.user.uid).set({
-      email: email,
-      role: role,
-      createdAt: Date.now()
-    });
-
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(email,password);
+    await db.ref('users/' + cred.user.uid).set({email:email, role:role, createdAt:Date.now()});
     alert('Cuenta creada correctamente. Ya puedes iniciar sesión.');
     showLogin();
-
-  } catch (error) {
-    alert('Error al crear la cuenta: ' + error.message);
-  }
+  } catch(e){ alert('Error al crear cuenta: '+e.message); }
 }
-
 </script>
 
 </body>
