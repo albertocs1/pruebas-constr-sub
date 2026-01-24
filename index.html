@@ -112,11 +112,52 @@ function show(id){document.getElementById(id).classList.remove('hidden')}
 function hide(id){document.getElementById(id).classList.add('hidden')}
 
 /* ================= LOGIN ================= */
-function login(){
-  const e=loginEmail.value,p=loginPassword.value;
-  if(!e||!p)return alert("Completa datos");
-  auth.signInWithEmailAndPassword(e,p).catch(a=>alert(a.message));
+async function login() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!email || !password) {
+    alert('Ingrese email y contraseña');
+    return;
+  }
+
+  try {
+    // 🔹 Iniciar sesión en Firebase
+    const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+    const uid = cred.user.uid;
+
+    // 🔹 Esperar a que el perfil exista en la base de datos
+    let userProfile = null;
+    for (let attempts = 0; attempts < 10; attempts++) {
+      const snapshot = await firebase.database().ref('users/' + uid).once('value');
+      userProfile = snapshot.val();
+      if (userProfile) break;
+      await new Promise(res => setTimeout(res, 200)); // espera 200ms antes de reintentar
+    }
+
+    if (!userProfile) {
+      alert('Perfil de usuario no encontrado');
+      await firebase.auth().signOut();
+      return;
+    }
+
+    // 🔹 Guardar datos globales
+    currentUser = cred.user;
+    currentUser.role = userProfile.role;          // rol: "constructora" o "subcontrata"
+    currentUser.companyName = userProfile.companyName || '';
+
+    // 🔹 Ocultar login y mostrar app
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('appView').style.display = 'block';
+
+    // 🔹 Mostrar menú de empresas
+    showMenu();
+
+  } catch (error) {
+    alert('Error en login: ' + error.message);
+  }
 }
+
 
 /* ================= AUTH ================= */
 auth.onAuthStateChanged(user=>{
