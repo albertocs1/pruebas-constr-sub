@@ -27,8 +27,12 @@ button{cursor:pointer}
   border-radius:50%;
   animation:spin 1s linear infinite;
 }
-@keyframes spin{to{transform:rotate(360deg)}}
-#calendar div{display:inline-block; width:30px; text-align:center; margin:2px;}
+
+/* Calendario */
+#calendar{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+#calendar div{padding:8px; text-align:center; border:1px solid #ddd; border-radius:4px; cursor:pointer;}
+#calendar div.today{background:#2563eb; color:#fff; font-weight:bold;}
+#calendar div.selected{background:#34d399; color:#fff;}
 </style>
 </head>
 
@@ -107,6 +111,7 @@ let companyData={};
 let currentCompany=null;
 let currentMonth=null;
 let currentYear=null;
+let selectedDay=null;
 
 /* ================= UTIL ================= */
 function show(id){document.getElementById(id).classList.remove('hidden')}
@@ -116,20 +121,15 @@ function hide(id){document.getElementById(id).classList.add('hidden')}
 async function login() {
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
-
   if (!email || !password) { alert('Ingrese email y contraseña'); return; }
 
   try {
     const cred = await auth.signInWithEmailAndPassword(email, password);
     currentUser = cred.user;
-
-    // Esperar perfil
     const snapshot = await db.ref('users/' + currentUser.uid).once('value');
     if(!snapshot.exists()){ alert('Perfil no encontrado'); await auth.signOut(); return; }
     currentUser.role = snapshot.val().role;
-
     hide('loginView'); show('appView'); showMenu();
-
   } catch (error) { alert('Error en login: '+error.message); }
 }
 
@@ -182,14 +182,15 @@ async function addCompany(){
   await openCompany(name);
 }
 
+/* ================= CALENDARIO ================= */
 async function openCompany(name){
   show('loadingScreen'); hide('companyMenu');
   currentCompany=name;
   const now=new Date();
   currentMonth=now.getMonth();
   currentYear=now.getFullYear();
+  selectedDay=null;
 
-  // Esperar que la empresa exista
   await ensureCompanyReady();
   renderCalendar();
 }
@@ -206,7 +207,6 @@ async function ensureCompanyReady(){
   companyData[currentCompany]={calendar:{}};
 }
 
-/* ================= CALENDARIO ================= */
 function renderCalendar(){
   hide('loadingScreen'); show('calendarView');
 
@@ -214,15 +214,51 @@ function renderCalendar(){
   const titleEl=document.getElementById('calendarTitle');
   calendarEl.innerHTML='';
 
-  titleEl.textContent=`${currentMonth+1}/${currentYear}`;
-  const days=new Date(currentYear,currentMonth+1,0).getDate();
-  for(let d=1;d<=days;d++){
+  // Mostrar nombre del mes
+  const monthNames=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio",
+                    "Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  titleEl.textContent=`${monthNames[currentMonth]} ${currentYear}`;
+
+  // Días de la semana
+  const weekDays=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  weekDays.forEach(d=>{
     const cell=document.createElement('div');
     cell.textContent=d;
-    cell.style.padding="8px";
-    cell.style.border="1px solid #ddd";
+    cell.style.fontWeight="bold";
+    cell.style.background="#eee";
+    calendarEl.appendChild(cell);
+  });
+
+  const firstDay=new Date(currentYear,currentMonth,1).getDay(); // 0=Domingo
+  let offset = firstDay===0 ? 6 : firstDay-1; // Ajustar lunes=0
+  for(let i=0;i<offset;i++){
+    const empty=document.createElement('div');
+    calendarEl.appendChild(empty);
+  }
+
+  const daysInMonth=new Date(currentYear,currentMonth+1,0).getDate();
+  const today=new Date();
+  for(let d=1;d<=daysInMonth;d++){
+    const cell=document.createElement('div');
+    cell.textContent=d;
+    if(d===today.getDate() && currentMonth===today.getMonth() && currentYear===today.getFullYear()){
+      cell.classList.add('today');
+    }
+    cell.onclick=()=>{
+      selectedDay=d;
+      document.querySelectorAll('#calendar div').forEach(c=>c.classList.remove('selected'));
+      cell.classList.add('selected');
+      // Aquí puedes añadir futuras funciones de eventos/tareas
+    };
     calendarEl.appendChild(cell);
   }
+}
+
+/* ================= BOTÓN VOLVER ================= */
+function backToMenu(){
+  selectedDay=null;
+  currentCompany=null;
+  hide('calendarView'); show('companyMenu');
 }
 
 /* ================= LOGOUT ================= */
@@ -237,9 +273,7 @@ async function register(){
   const email=document.getElementById('regEmail').value.trim();
   const password=document.getElementById('regPassword').value;
   const role=document.getElementById('regRole').value;
-
   if(!email || !password){ alert('Rellena email y contraseña'); return; }
-
   try{
     const cred = await auth.createUserWithEmailAndPassword(email,password);
     await db.ref('users/' + cred.user.uid).set({email:email, role:role, createdAt:Date.now()});
