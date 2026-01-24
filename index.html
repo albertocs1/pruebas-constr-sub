@@ -27,12 +27,42 @@ button{cursor:pointer}
   border-radius:50%;
   animation:spin 1s linear infinite;
 }
-
-/* Calendario */
-#calendar{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
-#calendar div{padding:8px; text-align:center; border:1px solid #ddd; border-radius:4px; cursor:pointer;}
-#calendar div.today{background:#2563eb; color:#fff; font-weight:bold;}
-#calendar div.selected{background:#34d399; color:#fff;}
+.dayCell{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #ddd;
+  padding:8px;
+  min-width:60px;
+  min-height:60px;
+  cursor:pointer;
+  position:relative;
+}
+.partBadge{
+  background:#2563eb;
+  color:#fff;
+  font-size:10px;
+  border-radius:4px;
+  padding:2px 4px;
+  margin-top:4px;
+}
+#partModal{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+#partModalContent{
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
 </style>
 </head>
 
@@ -55,16 +85,13 @@ button{cursor:pointer}
   
 <div id="registerView" style="display:none; padding:20px;">
   <h2>Crear cuenta</h2>
-
   <input id="regEmail" type="email" placeholder="Email"><br><br>
   <input id="regPassword" type="password" placeholder="Contraseña"><br><br>
-
   <label>Tipo de usuario:</label><br>
   <select id="regRole">
     <option value="contratista">Contratista</option>
     <option value="subcontratista">Subcontratista</option>
   </select><br><br>
-
   <button onclick="register()">Registrarse</button><br><br>
   <button onclick="showLogin()">Volver al login</button>
 </div>
@@ -84,9 +111,19 @@ button{cursor:pointer}
   <div id="calendarView" class="hidden">
     <button onclick="backToMenu()">← Volver</button>
     <h2 id="calendarTitle"></h2>
-    <div id="calendar"></div>
+    <div id="calendar" style="display:flex;flex-wrap:wrap;gap:4px"></div>
   </div>
 
+</div>
+
+<!-- MODAL PARTES -->
+<div id="partModal" class="hidden">
+  <div id="partModalContent">
+    <h3 id="modalDayTitle"></h3>
+    <textarea id="partText" placeholder="Descripción del parte" rows="4"></textarea>
+    <button onclick="savePart()">Guardar parte</button>
+    <button onclick="closePartModal()">Cancelar</button>
+  </div>
 </div>
 
 <!-- Firebase -->
@@ -117,171 +154,146 @@ let selectedDay=null;
 function show(id){document.getElementById(id).classList.remove('hidden')}
 function hide(id){document.getElementById(id).classList.add('hidden')}
 
-/* ================= LOGIN ================= */
+/* ================= LOGIN / REGISTER ================= */
 async function login() {
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
-  if (!email || !password) { alert('Ingrese email y contraseña'); return; }
-
+  if(!email||!password){alert('Ingrese email y contraseña'); return;}
   try {
-    const cred = await auth.signInWithEmailAndPassword(email, password);
-    currentUser = cred.user;
-    const snapshot = await db.ref('users/' + currentUser.uid).once('value');
-    if(!snapshot.exists()){ alert('Perfil no encontrado'); await auth.signOut(); return; }
-    currentUser.role = snapshot.val().role;
-    hide('loginView'); show('appView'); showMenu();
-  } catch (error) { alert('Error en login: '+error.message); }
+    const cred=await auth.signInWithEmailAndPassword(email,password);
+    currentUser=cred.user;
+    await waitForProfile(currentUser.uid);
+  } catch(e){alert('Error en login: '+e.message);}
 }
 
-/* ================= AUTH STATE ================= */
+function showRegister(){hide('loginView');show('registerView');}
+function showLogin(){hide('registerView');show('loginView');}
+
+async function register(){
+  const email=document.getElementById('regEmail').value.trim();
+  const password=document.getElementById('regPassword').value;
+  const role=document.getElementById('regRole').value;
+  if(!email||!password){alert('Rellena email y contraseña'); return;}
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    await db.ref('users/'+cred.user.uid).set({email,role,createdAt:Date.now()});
+    alert('Cuenta creada correctamente. Ya puedes iniciar sesión.');
+    showLogin();
+  }catch(e){alert('Error al crear la cuenta: '+e.message);}
+}
+
+/* ================= PERFIL / EMPRESAS ================= */
 auth.onAuthStateChanged(user=>{
-  if(!user){ hide('loadingScreen'); show('loginView'); hide('appView'); return; }
+  if(!user){hide('loadingScreen');show('loginView');hide('appView');return;}
   currentUser=user;
-  show('loadingScreen');
-  db.ref('users/'+user.uid).once('value').then(s=>{
-    if(s.exists()) currentUser.role=s.val().role;
-    loadCompanies();
-  });
+  waitForProfile(user.uid);
 });
 
-/* ================= EMPRESAS ================= */
-async function loadCompanies(){
-  const snapshot = await db.ref('users/' + currentUser.uid + '/companies').once('value');
-  companyData = snapshot.val() || {};
+async function waitForProfile(uid){
+  const snapshot=await db.ref('users/'+uid).once('value');
+  if(!snapshot.exists()){alert("No se pudo cargar el perfil"); auth.signOut(); return;}
+  currentUser.role=snapshot.val().role;
+  await loadCompanies();
   showMenu();
 }
 
+async function loadCompanies(){
+  const s=await db.ref('users/'+currentUser.uid+'/companies').once('value');
+  companyData=s.val()||{};
+}
+
 function showMenu(){
-  hide('loadingScreen'); hide('calendarView'); show('appView'); show('companyMenu');
+  hide('loadingScreen');hide('calendarView');show('appView');show('companyMenu');
   document.getElementById('currentUserEmail').textContent=`${currentUser.email} (${currentUser.role})`;
   renderCompanyList();
 }
 
 function renderCompanyList(){
-  const companyList=document.getElementById('companyList');
-  companyList.innerHTML='';
-  Object.keys(companyData).forEach(n=>{
+  const list=document.getElementById('companyList');
+  list.innerHTML='';
+  Object.keys(companyData).forEach(name=>{
     const d=document.createElement('div');
-    d.textContent=n;
-    d.onclick=()=>openCompany(n);
-    companyList.appendChild(d);
+    d.textContent=name;
+    d.onclick=()=>openCompany(name);
+    list.appendChild(d);
   });
 }
 
 async function addCompany(){
-  const name = document.getElementById('newCompanyName').value.trim();
-  if(!name){ alert('Introduce un nombre'); return; }
-  if(companyData[name]){ alert('Ya existe esa empresa'); return; }
-
-  companyData[name]={ calendar:{}, templates:[] };
-  document.getElementById('newCompanyName').value='';
-  currentCompany=name;
-
-  await db.ref(`users/${currentUser.uid}/companies/${name}`).set(companyData[name]);
+  const name=document.getElementById('newCompanyName').value.trim();
+  if(!name){alert("Introduce un nombre");return;}
+  if(companyData[name]){alert("Ya existe esa empresa"); return;}
+  companyData[name]={calendar:{},templates:[]};
+  await db.ref('users/'+currentUser.uid+'/companies/'+name).set(companyData[name]);
   renderCompanyList();
   await openCompany(name);
 }
 
 /* ================= CALENDARIO ================= */
 async function openCompany(name){
-  show('loadingScreen'); hide('companyMenu');
+  show('loadingScreen');hide('companyMenu');
   currentCompany=name;
-  const now=new Date();
-  currentMonth=now.getMonth();
-  currentYear=now.getFullYear();
-  selectedDay=null;
-
-  await ensureCompanyReady();
+  const now=new Date(); currentMonth=now.getMonth(); currentYear=now.getFullYear();
+  await loadCompanies();
   renderCalendar();
 }
 
-async function ensureCompanyReady(){
-  let attempts=0;
-  while(attempts<10){
-    const snapshot = await db.ref('users/' + currentUser.uid + '/companies').once('value');
-    companyData = snapshot.val() || {};
-    if(companyData[currentCompany]) return;
-    await new Promise(res=>setTimeout(res,200));
-    attempts++;
-  }
-  companyData[currentCompany]={calendar:{}};
-}
-
 function renderCalendar(){
-  hide('loadingScreen'); show('calendarView');
+  hide('loadingScreen');show('calendarView');
+  const cal=document.getElementById('calendar'); cal.innerHTML='';
+  document.getElementById('calendarTitle').textContent=`${currentMonth+1}/${currentYear}`;
 
-  const calendarEl=document.getElementById('calendar');
-  const titleEl=document.getElementById('calendarTitle');
-  calendarEl.innerHTML='';
-
-  // Mostrar nombre del mes
-  const monthNames=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio",
-                    "Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  titleEl.textContent=`${monthNames[currentMonth]} ${currentYear}`;
-
-  // Días de la semana
-  const weekDays=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
-  weekDays.forEach(d=>{
+  const days=new Date(currentYear,currentMonth+1,0).getDate();
+  for(let d=1; d<=days; d++){
     const cell=document.createElement('div');
+    cell.className='dayCell';
     cell.textContent=d;
-    cell.style.fontWeight="bold";
-    cell.style.background="#eee";
-    calendarEl.appendChild(cell);
-  });
 
-  const firstDay=new Date(currentYear,currentMonth,1).getDay(); // 0=Domingo
-  let offset = firstDay===0 ? 6 : firstDay-1; // Ajustar lunes=0
-  for(let i=0;i<offset;i++){
-    const empty=document.createElement('div');
-    calendarEl.appendChild(empty);
-  }
-
-  const daysInMonth=new Date(currentYear,currentMonth+1,0).getDate();
-  const today=new Date();
-  for(let d=1;d<=daysInMonth;d++){
-    const cell=document.createElement('div');
-    cell.textContent=d;
-    if(d===today.getDate() && currentMonth===today.getMonth() && currentYear===today.getFullYear()){
-      cell.classList.add('today');
+    // Añadir badge si ya hay partes
+    const parts=(companyData[currentCompany]?.calendar?.[currentYear]?.[currentMonth]?.[d]?.parts)||[];
+    if(parts.length>0){
+      const badge=document.createElement('div');
+      badge.className='partBadge';
+      badge.textContent=parts.length+' partes';
+      cell.appendChild(badge);
     }
-    cell.onclick=()=>{
-      selectedDay=d;
-      document.querySelectorAll('#calendar div').forEach(c=>c.classList.remove('selected'));
-      cell.classList.add('selected');
-      // Aquí puedes añadir futuras funciones de eventos/tareas
-    };
-    calendarEl.appendChild(cell);
+
+    // click para añadir parte
+    cell.onclick=()=>openPartModal(d);
+    cal.appendChild(cell);
   }
 }
 
-/* ================= BOTÓN VOLVER ================= */
-function backToMenu(){
-  selectedDay=null;
-  currentCompany=null;
-  hide('calendarView'); show('companyMenu');
+/* ================= PARTES ================= */
+function openPartModal(day){
+  selectedDay=day;
+  document.getElementById('modalDayTitle').textContent=`Partes ${day}/${currentMonth+1}/${currentYear}`;
+  document.getElementById('partText').value='';
+  show('partModal');
 }
 
-/* ================= LOGOUT ================= */
-function logout(){ auth.signOut(); }
+function closePartModal(){hide('partModal');}
 
-/* ================= NAV LOGIN/REGISTER ================= */
-function showRegister(){ hide('loginView'); show('registerView'); }
-function showLogin(){ hide('registerView'); show('loginView'); }
+async function savePart(){
+  const text=document.getElementById('partText').value.trim();
+  if(!text){alert('Escribe algo'); return;}
 
-/* ================= REGISTRO ================= */
-async function register(){
-  const email=document.getElementById('regEmail').value.trim();
-  const password=document.getElementById('regPassword').value;
-  const role=document.getElementById('regRole').value;
-  if(!email || !password){ alert('Rellena email y contraseña'); return; }
-  try{
-    const cred = await auth.createUserWithEmailAndPassword(email,password);
-    await db.ref('users/' + cred.user.uid).set({email:email, role:role, createdAt:Date.now()});
-    alert('Cuenta creada correctamente. Ya puedes iniciar sesión.');
-    showLogin();
-  } catch(e){ alert('Error al crear cuenta: '+e.message); }
+  // Ruta Firebase
+  const ref=db.ref(`users/${currentUser.uid}/companies/${currentCompany}/calendar/${currentYear}/${currentMonth}/${selectedDay}/parts`);
+  const snapshot=await ref.once('value');
+  const parts=snapshot.val()||[];
+  parts.push({text,createdAt:Date.now()});
+  await ref.set(parts);
+
+  await loadCompanies(); // recargar
+  renderCalendar();
+  closePartModal();
 }
+
+/* ================= LOGOUT / VOLVER ================= */
+function logout(){auth.signOut();}
+function backToMenu(){currentCompany=null;showMenu();}
+
 </script>
-
 </body>
 </html>
