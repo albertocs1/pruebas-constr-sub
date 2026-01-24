@@ -257,6 +257,35 @@ function showLogin() {
   document.getElementById('registerView').style.display = 'none';
   document.getElementById('loginView').style.display = 'block';
 }
+// ===== Registro de usuario con rol =====
+async function register() {
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const role = document.getElementById('regRole').value;
+
+  if (!email || !password) {
+    alert('Rellena email y contraseña');
+    return;
+  }
+
+  try {
+    // Crear usuario en Firebase Auth
+    const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+
+    // Guardar perfil en la base de datos
+    await firebase.database().ref('users/' + cred.user.uid).set({
+      email: email,
+      role: role,
+      createdAt: Date.now()
+    });
+
+    alert('Cuenta creada correctamente. Ya puedes iniciar sesión.');
+    showLogin();
+
+  } catch (error) {
+    alert('Error al crear la cuenta: ' + error.message);
+  }
+}
 
 </script>
 
