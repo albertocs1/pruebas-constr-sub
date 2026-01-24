@@ -240,14 +240,22 @@ async function openCompany(name) {
   currentMonth = now.getMonth();
   currentYear = now.getFullYear();
 
-  await ensureCompanyReady(); // Espera a que la empresa esté lista
+  // 🔹 Cargar la empresa directamente desde Firebase
+  const snapshot = await db.ref(`users/${currentUser.uid}/companies/${name}`).once('value');
+  if(!snapshot.exists()){
+    alert('Error: la empresa no existe en la base de datos');
+    backToMenu();
+    return;
+  }
+  companyData[name] = snapshot.val();
 
-  // 🔹 Cargar partes de la empresa en partesDia
-  cargarPartesDiaFromDB(companyData[currentCompany].calendar || {});
+  // 🔹 Cargar partes del calendario
+  cargarPartesDiaFromDB(companyData[name].calendar || {});
 
-  // 🔹 Ahora renderiza el calendario
+  // 🔹 Renderizar calendario
   renderCalendar();
 }
+
 
 
 function renderCalendar() {
@@ -457,7 +465,12 @@ async function guardarParte(){
 
 /* ================= LOGOUT / VOLVER ================= */
 function logout(){auth.signOut();}
-function backToMenu(){currentCompany=null;showMenu();}
+function backToMenu(){
+  currentCompany = null;
+  hide('calendarView');
+  show('companyMenu');
+}
+
 
 function cargarPartesDiaFromDB(calendarData) {
   // Reiniciar
