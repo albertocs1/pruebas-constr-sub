@@ -225,18 +225,22 @@ function renderCompanyList(){
 
 async function addCompany(){
   const name = document.getElementById('newCompanyName').value.trim();
-  if(!name) return;
+  if(!name) { alert('Introduce un nombre'); return; }
   if(companyData[name]) { alert('Ya existe esa empresa'); return; }
 
+  // Crear empresa localmente
   companyData[name] = { calendar: {}, templates: [] };
   document.getElementById('newCompanyName').value = '';
   currentCompany = name;
 
   try {
+    // Guardar en Firebase
     await db.ref(`users/${currentUser.uid}/companies/${name}`).set(companyData[name]);
+
+    // Actualizar lista de empresas
     renderCompanyList();
 
-    // 🔹 Abrir automáticamente el calendario de la empresa recién creada
+    // Abrir calendario
     await openCompany(name);
 
   } catch(err) {
@@ -244,8 +248,6 @@ async function addCompany(){
     alert("Error guardando empresa: " + err.message);
   }
 }
-
-
 
 async function openCompany(name){
   show('loadingScreen');
@@ -256,26 +258,32 @@ async function openCompany(name){
   currentMonth = now.getMonth();
   currentYear = now.getFullYear();
 
-  await ensureCompanyReady(); // ✅ Espera a que la empresa esté lista antes de renderizar
+  // Espera a que la empresa esté lista
+  await ensureCompanyReady();
+
+  // Mostrar calendario
+  renderCalendar();
 }
 
+async function ensureCompanyReady() {
+  let attempts = 0;
+  while(attempts < 10){
+    // Cargar empresas desde Firebase
+    const snapshot = await db.ref('users/' + currentUser.uid + '/companies').once('value');
+    companyData = snapshot.val() || {};
 
+    // Si existe la empresa actual, salimos
+    if(companyData[currentCompany]) return;
 
-async function ensureCompanyReady(attempt = 0) {
-  if(attempt > 10){
-    companyData[currentCompany] = { calendar:{} };
-    renderCalendar();
-    return;
+    // Esperar 200ms antes de intentar de nuevo
+    await new Promise(res => setTimeout(res, 200));
+    attempts++;
   }
 
-  await loadCompaniesAsync(); // Esperar a que carguen los datos
-
-  if(companyData[currentCompany]){
-    renderCalendar();
-  } else {
-    setTimeout(() => ensureCompanyReady(attempt + 1), 200);
-  }
+  // Si no existe tras 10 intentos, crear vacía
+  companyData[currentCompany] = { calendar:{} };
 }
+
 
 
 
