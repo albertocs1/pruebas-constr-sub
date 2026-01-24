@@ -163,15 +163,56 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
       Entrar
     </button>
 
-    <button onclick="register()" class="back-btn" style="
+    <button onclick="showRegister()" class="back-btn" style="
+  width:100%;
+  margin-top:8px;
+  background:#2563eb;
+">
+  Registrarse
+</button>
+
+  </div>
+
+<!-- FORMULARIO DE REGISTRO CON ROL -->
+<div id="registerForm" style="display:none; height:100vh; justify-content:center; align-items:center; background:#f4f6f8;">
+  <div style="
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    width:320px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+  ">
+    <h2 style="text-align:center;margin-bottom:15px;">Registro de Nuevo Usuario</h2>
+
+    <label>Email</label>
+    <input type="email" id="regEmail" placeholder="Email">
+
+    <label>Contraseña</label>
+    <input type="password" id="regPassword" placeholder="Contraseña">
+
+    <label>Rol</label>
+    <select id="regRole">
+      <option value="">Seleccione rol</option>
+      <option value="Contratista">Contratista</option>
+      <option value="Subcontratista">Subcontratista</option>
+    </select>
+
+    <button onclick="registerUser()" class="back-btn" style="width:100%; margin-top:12px;">
+      Registrarse
+    </button>
+
+    <button onclick="showLogin()" class="back-btn" style="
       width:100%;
       margin-top:8px;
-      background:#2563eb;
+      background:#6b7280;
     ">
-      Registrarse
+      Volver a Login
     </button>
   </div>
 </div>
+
+</div>
+  
 <div id="appView" style="display:none">
 
 
@@ -834,6 +875,47 @@ function register(){
   const pass = document.getElementById('loginPassword').value;
 
   auth.createUserWithEmailAndPassword(email, pass)
+    .catch(err => alert(err.message));
+}
+
+// Mostrar formulario de registro
+function showRegister() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'flex';
+}
+
+// Volver a login
+function showLogin() {
+  document.getElementById('registerForm').style.display = 'none';
+  document.getElementById('loginView').style.display = 'flex';
+}
+
+// Registro con rol
+function registerUser() {
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPassword').value.trim();
+  const role = document.getElementById('regRole').value;
+
+  if(!email || !pass || !role) return alert("Complete todos los campos");
+
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(userCredential => {
+      const user = userCredential.user;
+
+      // Guardar rol en Firebase
+      db.ref(`users/${user.uid}/info`).set({
+        email: email,
+        role: role
+      }).then(() => {
+        alert("Usuario registrado correctamente");
+        currentUser = user;
+
+        // Mostrar app y menú de empresas
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('appView').style.display = 'block';
+        showMenu();
+      }).catch(err => alert("Error guardando rol: " + err.message));
+    })
     .catch(err => alert(err.message));
 }
 
