@@ -247,6 +247,17 @@ function backToMenu(){
 function logout(){
   auth.signOut();
 }
+// ===== Navegación entre login y registro =====
+function showRegister() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('registerView').style.display = 'block';
+}
+
+function showLogin() {
+  document.getElementById('registerView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'block';
+}
+
 </script>
 
 </body>
