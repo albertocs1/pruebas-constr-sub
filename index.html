@@ -224,13 +224,32 @@ function renderCompanyList(){
 }
 
 function addCompany(){
-  const n=newCompanyName.value.trim();
-  if(!n||companyData[n])return;
-  companyData[n]={calendar:{}};
-  db.ref(`users/${currentUser.uid}/companies/${n}`)
-    .set(companyData[n])
-    .then(()=>openCompany(n));
+  const name = document.getElementById('newCompanyName').value.trim();
+  if(!name) return;
+  if(companyData[name]) { alert('Ya existe esa empresa'); return; }
+
+  companyData[name] = { calendar: {}, templates: [] };
+  document.getElementById('newCompanyName').value = '';
+  currentCompany = name;
+
+  db.ref(`users/${currentUser.uid}/companies/${name}`)
+  .set(companyData[name])
+  .then(() => {
+    console.log(`Empresa "${name}" guardada correctamente en Firebase`);
+
+    // 🔹 Actualizar lista de empresas
+    renderCompanyList();
+
+    // 🔹 Abrir automáticamente el calendario de la empresa recién creada
+    openCompany(name);
+  })
+  .catch(err => {
+    console.error("Error guardando empresa:", err);
+    alert("Error guardando empresa: " + err.message);
+  });
+
 }
+
 
 function openCompany(name){
   show('loadingScreen');
