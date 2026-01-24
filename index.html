@@ -239,61 +239,221 @@ async function openCompany(name){
 }
 
 function renderCalendar(){
-  hide('loadingScreen');show('calendarView');
-  const cal=document.getElementById('calendar'); cal.innerHTML='';
-  document.getElementById('calendarTitle').textContent=`${currentMonth+1}/${currentYear}`;
+  hide('loadingScreen');
+  show('calendarView');
 
-  const days=new Date(currentYear,currentMonth+1,0).getDate();
+  calendar.innerHTML='';
+  calendarTitle.textContent = `${currentMonth+1}/${currentYear}`;
+
+  const days = new Date(currentYear, currentMonth+1,0).getDate();
+
   for(let d=1; d<=days; d++){
-    const cell=document.createElement('div');
-    cell.className='dayCell';
-    cell.textContent=d;
+    const cell = document.createElement('div');
+    cell.textContent = d;
+    cell.style.padding = "8px";
+    cell.style.border = "1px solid #ddd";
+    cell.style.cursor = "pointer";
 
-    // Añadir badge si ya hay partes
-    const parts=(companyData[currentCompany]?.calendar?.[currentYear]?.[currentMonth]?.[d]?.parts)||[];
-    if(parts.length>0){
-      const badge=document.createElement('div');
-      badge.className='partBadge';
-      badge.textContent=parts.length+' partes';
-      cell.appendChild(badge);
-    }
+    cell.onclick = () => abrirModalParte(d);
 
-    // click para añadir parte
-    cell.onclick=()=>openPartModal(d);
-    cal.appendChild(cell);
+    calendar.appendChild(cell);
   }
 }
 
 /* ================= PARTES ================= */
-function openPartModal(day){
-  selectedDay=day;
-  document.getElementById('modalDayTitle').textContent=`Partes ${day}/${currentMonth+1}/${currentYear}`;
-  document.getElementById('partText').value='';
-  show('partModal');
+let currentDay=null;   // Día seleccionado en el calendario
+let partesDia={};      // Partes guardadas para el día seleccionado
+
+function abrirModalParte(day){
+  currentDay = day;
+  partesDia[day] = partesDia[day] || [];
+
+  document.getElementById('parteModal').classList.remove('hidden');
+
+  // Limpiar container
+  document.getElementById('trabajosContainer').innerHTML = '';
+
+  // Cargar trabajadores frecuentes
+  cargarTrabajadoresFrecuentes();
+
+  // Si ya hay partes guardadas en ese día, mostrar la primera (puedes ajustar para seleccionar cuál mostrar)
+  if(partesDia[day].length > 0){
+    const parte = partesDia[day][0]; // tomamos la primera parte
+    document.getElementById('parteTrabajadorFrecuente').value = parte.trabajador;
+    document.getElementById('parteNombre').value = parte.trabajador;
+    document.getElementById('parteRango').value = parte.rango;
+
+    parte.trabajos.forEach(t => addTrabajo(t.descripcion, t.horas));
+  } else {
+    // Si no hay partes, añadir un trabajo inicial vacío
+    addTrabajo();
+  }
+
+  actualizarHorasTotales();
 }
 
-function closePartModal(){hide('partModal');}
 
-async function savePart(){
-  const text=document.getElementById('partText').value.trim();
-  if(!text){alert('Escribe algo'); return;}
+function cerrarModalParte(){
+  document.getElementById('parteModal').classList.add('hidden');
+}
 
-  // Ruta Firebase
-  const ref=db.ref(`users/${currentUser.uid}/companies/${currentCompany}/calendar/${currentYear}/${currentMonth}/${selectedDay}/parts`);
-  const snapshot=await ref.once('value');
-  const parts=snapshot.val()||[];
-  parts.push({text,createdAt:Date.now()});
-  await ref.set(parts);
+function cargarTrabajadoresFrecuentes(){
+  const select = document.getElementById('parteTrabajadorFrecuente');
+  select.innerHTML = '<option value="">-- Selecciona --</option>';
+  // Recorre todas las partes de la empresa para rellenar el select
+  const nombres = new Set();
+  Object.values(partesDia).forEach(arr => {
+    arr.forEach(p => nombres.add(p.trabajador));
+  });
+  nombres.forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = n;
+    select.appendChild(opt);
+  });
+}
 
-  await loadCompanies(); // recargar
-  renderCalendar();
-  closePartModal();
+// Cuando se selecciona un trabajador frecuente, rellena automáticamente el nombre
+document.getElementById('parteTrabajadorFrecuente')?.addEventListener('change', function(){
+  document.getElementById('parteNombre').value = this.value;
+});
+
+function addTrabajo(descripcion='', horas=''){
+  const container = document.getElementById('trabajosContainer');
+  const div = document.createElement('div');
+  div.style.display = 'flex';
+  div.style.gap = '8px';
+  div.style.marginBottom = '6px';
+
+  const descInput = document.createElement('input');
+  descInput.placeholder = 'Trabajo realizado';
+  descInput.value = descripcion;
+  descInput.style.flex = '2';
+
+  const horasInput = document.createElement('input');
+  horasInput.type = 'number';
+  horasInput.placeholder = 'Horas';
+  horasInput.value = horas;
+  horasInput.style.flex = '1';
+  horasInput.addEventListener('input', actualizarHorasTotales);
+
+  const btnEliminar = document.createElement('button');
+  btnEliminar.textContent = 'Eliminar';
+  btnEliminar.onclick = () => { div.remove(); actualizarHorasTotales(); };
+
+  div.appendChild(descInput);
+  div.appendChild(horasInput);
+  div.appendChild(btnEliminar);
+
+  container.appendChild(div);
+}
+
+function actualizarHorasTotales(){
+  const container = document.getElementById('trabajosContainer');
+  let total = 0;
+  container.querySelectorAll('input[type="number"]').forEach(inp => {
+    const val = parseFloat(inp.value);
+    if(!isNaN(val)) total += val;
+  });
+  document.getElementById('horasTotales').value = total;
+}
+
+async function guardarParte(){
+  const trabajador = document.getElementById('parteNombre').value.trim();
+  const rango = document.getElementById('parteRango').value.trim();
+  if(!trabajador || !rango){
+    alert('Completa nombre y rango');
+    return;
+  }
+
+  const trabajos = [];
+  document.getElementById('trabajosContainer').querySelectorAll('div').forEach(div=>{
+    const inputs = div.querySelectorAll('input');
+    const desc = inputs[0].value.trim();
+    const hrs = parseFloat(inputs[1].value);
+    if(desc && !isNaN(hrs)) trabajos.push({descripcion: desc, horas: hrs});
+  });
+
+  if(trabajos.length === 0){
+    alert('Añade al menos un trabajo con horas');
+    return;
+  }
+
+  const horasTotales = trabajos.reduce((acc,t)=>acc+t.horas,0);
+
+  // Si ya hay una parte, actualizamos la primera
+  if(partesDia[currentDay].length > 0){
+    partesDia[currentDay][0] = {trabajador, rango, trabajos, horasTotales};
+  } else {
+    partesDia[currentDay].push({trabajador, rango, trabajos, horasTotales});
+  }
+
+  await db.ref(`users/${currentUser.uid}/companies/${currentCompany}/calendar/${currentYear}/${currentMonth+1}/${currentDay}`)
+          .set(partesDia[currentDay]);
+
+  cerrarModalParte();
+  alert('Parte guardado correctamente!');
 }
 
 /* ================= LOGOUT / VOLVER ================= */
 function logout(){auth.signOut();}
 function backToMenu(){currentCompany=null;showMenu();}
 
+
 </script>
+
+<!-- MODAL DE PARTES -->
+<div id="parteModal" class="hidden" style="
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:1000;
+">
+  <div style="
+    background:#fff;
+    padding:20px;
+    border-radius:8px;
+    max-width:600px;
+    width:90%;
+    max-height:90%;
+    overflow:auto;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  ">
+    <h3>Nuevo Parte</h3>
+
+    <label>Trabajador frecuente:</label>
+    <select id="parteTrabajadorFrecuente">
+      <option value="">-- Selecciona --</option>
+    </select>
+
+    <label>Nombre del trabajador:</label>
+    <input type="text" id="parteNombre">
+
+    <label>Rango:</label>
+    <input type="text" id="parteRango">
+
+    <div id="trabajosContainer">
+      <h4>Trabajos realizados</h4>
+      <!-- Aquí se añadirán dinámicamente los trabajos -->
+    </div>
+
+    <button onclick="addTrabajo()">+ Añadir trabajo</button>
+
+    <label>Horas totales:</label>
+    <input type="number" id="horasTotales" readonly style="background:#eee;">
+
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+      <button onclick="guardarParte()">Guardar</button>
+      <button onclick="cerrarModalParte()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
 </body>
 </html>
