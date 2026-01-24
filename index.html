@@ -870,14 +870,6 @@ function login(){
     .catch(err => alert(err.message));
 }
 
-function register(){
-  const email = document.getElementById('loginEmail').value;
-  const pass = document.getElementById('loginPassword').value;
-
-  auth.createUserWithEmailAndPassword(email, pass)
-    .catch(err => alert(err.message));
-}
-
 // Mostrar formulario de registro
 function showRegister() {
   document.getElementById('loginView').style.display = 'none';
