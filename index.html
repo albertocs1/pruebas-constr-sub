@@ -891,6 +891,9 @@ function registerUser() {
   auth.createUserWithEmailAndPassword(email, pass)
     .then(userCredential => {
       const user = userCredential.user;
+      
+      // 🔹 OPCIONAL: mostrar en consola
+      console.log("Usuario registrado:", user.email, "Rol:", role);
 
       // 🔹 Guardar rol en Firebase
       db.ref(`users/${user.uid}/info`).set({
