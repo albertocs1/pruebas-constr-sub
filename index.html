@@ -230,34 +230,94 @@ async function addCompany(){
 }
 
 /* ================= CALENDARIO ================= */
-async function openCompany(name){
-  show('loadingScreen');hide('companyMenu');
-  currentCompany=name;
-  const now=new Date(); currentMonth=now.getMonth(); currentYear=now.getFullYear();
-  await loadCompanies();
+// Ejemplo dentro de openCompany
+async function openCompany(name) {
+  show('loadingScreen');
+  hide('companyMenu');
+
+  currentCompany = name;
+  const now = new Date();
+  currentMonth = now.getMonth();
+  currentYear = now.getFullYear();
+
+  await ensureCompanyReady(); // Espera a que la empresa esté lista
+
+  // 🔹 Cargar partes de la empresa en partesDia
+  cargarPartesDiaFromDB(companyData[currentCompany].calendar || {});
+
+  // 🔹 Ahora renderiza el calendario
   renderCalendar();
 }
 
-function renderCalendar(){
+
+function renderCalendar() {
   hide('loadingScreen');
   show('calendarView');
 
-  calendar.innerHTML='';
-  calendarTitle.textContent = `${currentMonth+1}/${currentYear}`;
+  calendar.innerHTML = '';
+  calendarTitle.textContent = `${currentMonth + 1}/${currentYear}`;
 
-  const days = new Date(currentYear, currentMonth+1,0).getDate();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  for(let d=1; d<=days; d++){
+  // Crear un contenedor tipo grid
+  const grid = document.createElement('div');
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  grid.style.gap = '4px';
+
+  for (let d = 1; d <= daysInMonth; d++) {
     const cell = document.createElement('div');
-    cell.textContent = d;
-    cell.style.padding = "8px";
-    cell.style.border = "1px solid #ddd";
-    cell.style.cursor = "pointer";
+    cell.style.border = '1px solid #ccc';
+    cell.style.padding = '6px';
+    cell.style.minHeight = '60px';
+    cell.style.position = 'relative';
+    cell.style.display = 'flex';
+    cell.style.flexDirection = 'column';
+    cell.style.justifyContent = 'flex-start';
+    cell.style.alignItems = 'flex-start';
+    cell.style.background = '#fff';
+    cell.style.borderRadius = '4px';
+    cell.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
 
-    cell.onclick = () => abrirModalParte(d);
+    // Número del día
+    const dayNum = document.createElement('div');
+    dayNum.textContent = d;
+    dayNum.style.fontWeight = 'bold';
+    dayNum.style.marginBottom = '4px';
+    cell.appendChild(dayNum);
 
-    calendar.appendChild(cell);
+    // Trabajador si hay parte
+    const partes = partesDia[d] || [];
+    if (partes.length > 0) {
+      const nombreTrabajador = document.createElement('div');
+      nombreTrabajador.textContent = partes[0].trabajador; // mostramos el primero
+      nombreTrabajador.style.fontSize = '0.85em';
+      nombreTrabajador.style.color = '#2563eb';
+      nombreTrabajador.style.marginBottom = '4px';
+      cell.appendChild(nombreTrabajador);
+    }
+
+    // Botón "+"
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '+';
+    addBtn.style.position = 'absolute';
+    addBtn.style.bottom = '4px';
+    addBtn.style.right = '4px';
+    addBtn.style.width = '24px';
+    addBtn.style.height = '24px';
+    addBtn.style.border = 'none';
+    addBtn.style.borderRadius = '50%';
+    addBtn.style.background = '#2563eb';
+    addBtn.style.color = '#fff';
+    addBtn.style.cursor = 'pointer';
+    addBtn.onclick = () => abrirModalParte(d);
+
+    cell.appendChild(addBtn);
+
+    grid.appendChild(cell);
   }
+
+  calendar.appendChild(grid);
 }
 
 /* ================= PARTES ================= */
@@ -398,6 +458,23 @@ async function guardarParte(){
 /* ================= LOGOUT / VOLVER ================= */
 function logout(){auth.signOut();}
 function backToMenu(){currentCompany=null;showMenu();}
+
+function cargarPartesDiaFromDB(calendarData) {
+  // Reiniciar
+  partesDia = {};
+
+  // Si no hay datos, salimos
+  if (!calendarData) return;
+
+  // Los datos suelen estar guardados por año -> mes -> día
+  const yearData = calendarData[currentYear] || {};
+  const monthData = yearData[currentMonth + 1] || {}; // +1 porque meses en JS van 0-11
+
+  Object.keys(monthData).forEach(day => {
+    // Guardamos un array de partes por cada día
+    partesDia[parseInt(day)] = monthData[day];
+  });
+}
 
 
 </script>
