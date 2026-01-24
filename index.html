@@ -9,66 +9,22 @@
 <style>
 html,body{margin:0;height:100%;font-family:Segoe UI,Arial}
 body{background:#f4f6f8;color:#111}
-
 .hidden{display:none!important}
-.center{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  flex-direction:column;
-  gap:12px;
-}
+.center{display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;gap:12px}
 button{cursor:pointer}
-.loader{
-  width:40px;height:40px;
-  border:4px solid #ddd;
-  border-top:4px solid #2563eb;
-  border-radius:50%;
-  animation:spin 1s linear infinite;
-}
-.dayCell{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  border:1px solid #ddd;
-  padding:8px;
-  min-width:60px;
-  min-height:60px;
-  cursor:pointer;
-  position:relative;
-}
-.partBadge{
-  background:#2563eb;
-  color:#fff;
-  font-size:10px;
-  border-radius:4px;
-  padding:2px 4px;
-  margin-top:4px;
-}
-#partModal{
-  position:fixed;
-  top:0;left:0;right:0;bottom:0;
-  background:rgba(0,0,0,0.5);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-#partModalContent{
-  background:#fff;
-  padding:20px;
-  border-radius:8px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
+.loader{width:40px;height:40px;border:4px solid #ddd;border-top:4px solid #2563eb;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dayCell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;border:1px solid #ddd;padding:8px;min-width:60px;min-height:60px;position:relative;background:#fff;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,0.1)}
+.partBadge{background:#2563eb;color:#fff;font-size:10px;border-radius:4px;padding:2px 4px;margin-top:4px}
+#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:4px}
+#partModal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000}
+#partModalContent{background:#fff;padding:20px;border-radius:8px;max-width:600px;width:90%;max-height:90%;overflow:auto;display:flex;flex-direction:column;gap:12px}
+#trabajosContainer div{display:flex;gap:8px;margin-bottom:6px}
 </style>
 </head>
-
 <body>
 
-<!-- LOADING GLOBAL -->
+<!-- LOADING -->
 <div id="loadingScreen" class="center">
   <div class="loader"></div>
   <div>Cargando datos…</div>
@@ -77,13 +33,14 @@ button{cursor:pointer}
 <!-- LOGIN -->
 <div id="loginView" class="center hidden">
   <h2>Iniciar sesión</h2>
-  <input id="loginEmail" placeholder="Email">
-  <input id="loginPassword" type="password" placeholder="Contraseña">
+  <input id="loginEmail" placeholder="Email"><br><br>
+  <input id="loginPassword" type="password" placeholder="Contraseña"><br><br>
   <button onclick="login()">Entrar</button>
   <button onclick="showRegister()">Crear cuenta</button>
 </div>
-  
-<div id="registerView" style="display:none; padding:20px;">
+
+<!-- REGISTER -->
+<div id="registerView" class="hidden center">
   <h2>Crear cuenta</h2>
   <input id="regEmail" type="email" placeholder="Email"><br><br>
   <input id="regPassword" type="password" placeholder="Contraseña"><br><br>
@@ -97,12 +54,12 @@ button{cursor:pointer}
 </div>
 
 <!-- APP -->
-<div id="appView" class="hidden">
+<div id="appView" class="hidden" style="padding:16px">
 
   <div id="companyMenu">
     <h2>Empresas</h2>
     <p id="currentUserEmail"></p>
-    <div id="companyList"></div>
+    <div id="companyList"></div><br>
     <input id="newCompanyName" placeholder="Nueva empresa">
     <button onclick="addCompany()">Añadir</button>
     <button onclick="logout()">Cerrar sesión</button>
@@ -111,7 +68,7 @@ button{cursor:pointer}
   <div id="calendarView" class="hidden">
     <button onclick="backToMenu()">← Volver</button>
     <h2 id="calendarTitle"></h2>
-    <div id="calendar" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+    <div id="calendar"></div>
   </div>
 
 </div>
@@ -119,14 +76,33 @@ button{cursor:pointer}
 <!-- MODAL PARTES -->
 <div id="partModal" class="hidden">
   <div id="partModalContent">
-    <h3 id="modalDayTitle"></h3>
-    <textarea id="partText" placeholder="Descripción del parte" rows="4"></textarea>
-    <button onclick="savePart()">Guardar parte</button>
-    <button onclick="closePartModal()">Cancelar</button>
+    <h3>Día <span id="modalDayTitle"></span></h3>
+
+    <label>Trabajador frecuente:</label>
+    <select id="parteTrabajadorFrecuente">
+      <option value="">-- Selecciona --</option>
+    </select>
+
+    <label>Nombre del trabajador:</label>
+    <input type="text" id="parteNombre">
+
+    <label>Rango:</label>
+    <input type="text" id="parteRango">
+
+    <div id="trabajosContainer"><h4>Trabajos realizados</h4></div>
+    <button onclick="addTrabajo()">+ Añadir trabajo</button>
+
+    <label>Horas totales:</label>
+    <input type="number" id="horasTotales" readonly style="background:#eee;">
+
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+      <button onclick="guardarParte()">Guardar</button>
+      <button onclick="cerrarModalParte()">Cancelar</button>
+    </div>
   </div>
 </div>
 
-<!-- Firebase -->
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -142,69 +118,68 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.database();
 
-/* ================= ESTADO GLOBAL ================= */
-let currentUser=null;
-let companyData={};
-let currentCompany=null;
-let currentMonth=null;
-let currentYear=null;
-let selectedDay=null;
+/* ================= ESTADO ================= */
+let currentUser = null;
+let companyData = {};
+let currentCompany = null;
+let currentMonth = null;
+let currentYear = null;
+let partesDia = {};
+let currentDay = null;
 
 /* ================= UTIL ================= */
 function show(id){document.getElementById(id).classList.remove('hidden')}
 function hide(id){document.getElementById(id).classList.add('hidden')}
 
 /* ================= LOGIN / REGISTER ================= */
-async function login() {
+async function login(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
-  if(!email||!password){alert('Ingrese email y contraseña'); return;}
-  try {
-    const cred=await auth.signInWithEmailAndPassword(email,password);
+  if(!email||!password){alert('Email y contraseña requeridos');return;}
+  try{
+    const cred = await auth.signInWithEmailAndPassword(email,password);
     currentUser=cred.user;
     await waitForProfile(currentUser.uid);
-  } catch(e){alert('Error en login: '+e.message);}
+  }catch(e){alert('Error en login: '+e.message);}
 }
-
-function showRegister(){hide('loginView');show('registerView');}
-function showLogin(){hide('registerView');show('loginView');}
-
 async function register(){
   const email=document.getElementById('regEmail').value.trim();
   const password=document.getElementById('regPassword').value;
   const role=document.getElementById('regRole').value;
-  if(!email||!password){alert('Rellena email y contraseña'); return;}
+  if(!email||!password){alert('Completa email y contraseña'); return;}
   try{
-    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    const cred = await auth.createUserWithEmailAndPassword(email,password);
     await db.ref('users/'+cred.user.uid).set({email,role,createdAt:Date.now()});
     alert('Cuenta creada correctamente. Ya puedes iniciar sesión.');
     showLogin();
   }catch(e){alert('Error al crear la cuenta: '+e.message);}
 }
+function showRegister(){hide('loginView');show('registerView');}
+function showLogin(){hide('registerView');show('loginView');}
 
 /* ================= PERFIL / EMPRESAS ================= */
 auth.onAuthStateChanged(user=>{
   if(!user){hide('loadingScreen');show('loginView');hide('appView');return;}
   currentUser=user;
-  waitForProfile(user.uid);
+  waitForProfile(currentUser.uid);
 });
 
 async function waitForProfile(uid){
-  const snapshot=await db.ref('users/'+uid).once('value');
+  const snapshot = await db.ref('users/'+uid).once('value');
   if(!snapshot.exists()){alert("No se pudo cargar el perfil"); auth.signOut(); return;}
-  currentUser.role=snapshot.val().role;
+  currentUser.role = snapshot.val().role;
   await loadCompanies();
   showMenu();
 }
 
 async function loadCompanies(){
-  const s=await db.ref('users/'+currentUser.uid+'/companies').once('value');
-  companyData=s.val()||{};
+  const snapshot = await db.ref('users/'+currentUser.uid+'/companies').once('value');
+  companyData = snapshot.val()||{};
 }
 
 function showMenu(){
   hide('loadingScreen');hide('calendarView');show('appView');show('companyMenu');
-  document.getElementById('currentUserEmail').textContent=`${currentUser.email} (${currentUser.role})`;
+  document.getElementById('currentUserEmail').textContent = `${currentUser.email} (${currentUser.role})`;
   renderCompanyList();
 }
 
@@ -212,338 +187,170 @@ function renderCompanyList(){
   const list=document.getElementById('companyList');
   list.innerHTML='';
   Object.keys(companyData).forEach(name=>{
-    const d=document.createElement('div');
-    d.textContent=name;
-    d.onclick=()=>openCompany(name);
-    list.appendChild(d);
+    const div=document.createElement('div');
+    div.textContent=name;
+    div.onclick=()=>openCompany(name);
+    list.appendChild(div);
   });
 }
 
 async function addCompany(){
-  const name=document.getElementById('newCompanyName').value.trim();
+  const name = document.getElementById('newCompanyName').value.trim();
   if(!name){alert("Introduce un nombre");return;}
-  if(companyData[name]){alert("Ya existe esa empresa"); return;}
+  if(companyData[name]){alert("Ya existe");return;}
   companyData[name]={calendar:{},templates:[]};
   await db.ref('users/'+currentUser.uid+'/companies/'+name).set(companyData[name]);
   renderCompanyList();
   await openCompany(name);
 }
 
+function backToMenu(){
+  currentCompany=null;
+  hide('calendarView');
+  show('companyMenu');
+}
+
 /* ================= CALENDARIO ================= */
-// Ejemplo dentro de openCompany
-async function openCompany(name) {
+async function openCompany(name){
   show('loadingScreen');
   hide('companyMenu');
+  currentCompany=name;
+  const now=new Date();
+  currentMonth=now.getMonth();
+  currentYear=now.getFullYear();
 
-  currentCompany = name;
-  const now = new Date();
-  currentMonth = now.getMonth();
-  currentYear = now.getFullYear();
-
-  // 🔹 Cargar la empresa directamente desde Firebase
   const snapshot = await db.ref(`users/${currentUser.uid}/companies/${name}`).once('value');
-  if(!snapshot.exists()){
-    alert('Error: la empresa no existe en la base de datos');
-    backToMenu();
-    return;
-  }
+  if(!snapshot.exists()){alert("Error al cargar empresa"); backToMenu(); return;}
   companyData[name] = snapshot.val();
 
-  // 🔹 Cargar partes del calendario
   cargarPartesDiaFromDB(companyData[name].calendar || {});
-
-  // 🔹 Renderizar calendario
   renderCalendar();
 }
 
+function cargarPartesDiaFromDB(calendarData){
+  partesDia={};
+  if(!calendarData) return;
+  const yearData = calendarData[currentYear]||{};
+  const monthData = yearData[currentMonth+1]||{};
+  Object.keys(monthData).forEach(day=>{
+    partesDia[parseInt(day)] = monthData[day];
+  });
+}
 
+function renderCalendar(){
+  hide('loadingScreen'); show('calendarView');
+  const calendar=document.getElementById('calendar');
+  calendar.innerHTML='';
+  document.getElementById('calendarTitle').textContent = `${currentMonth+1}/${currentYear}`;
 
-function renderCalendar() {
-  hide('loadingScreen');
-  show('calendarView');
+  const daysInMonth = new Date(currentYear,currentMonth+1,0).getDate();
+  for(let d=1;d<=daysInMonth;d++){
+    const cell=document.createElement('div');
+    cell.classList.add('dayCell');
 
-  calendar.innerHTML = '';
-  calendarTitle.textContent = `${currentMonth + 1}/${currentYear}`;
-
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-  // Crear un contenedor tipo grid
-  const grid = document.createElement('div');
-  grid.style.display = 'grid';
-  grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-  grid.style.gap = '4px';
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const cell = document.createElement('div');
-    cell.style.border = '1px solid #ccc';
-    cell.style.padding = '6px';
-    cell.style.minHeight = '60px';
-    cell.style.position = 'relative';
-    cell.style.display = 'flex';
-    cell.style.flexDirection = 'column';
-    cell.style.justifyContent = 'flex-start';
-    cell.style.alignItems = 'flex-start';
-    cell.style.background = '#fff';
-    cell.style.borderRadius = '4px';
-    cell.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
-
-    // Número del día
-    const dayNum = document.createElement('div');
-    dayNum.textContent = d;
-    dayNum.style.fontWeight = 'bold';
-    dayNum.style.marginBottom = '4px';
+    const dayNum=document.createElement('div'); dayNum.textContent=d; dayNum.style.fontWeight='bold';
     cell.appendChild(dayNum);
 
-    // Trabajador si hay parte
-    const partes = partesDia[d] || [];
-    if (partes.length > 0) {
-      const nombreTrabajador = document.createElement('div');
-      nombreTrabajador.textContent = partes[0].trabajador; // mostramos el primero
-      nombreTrabajador.style.fontSize = '0.85em';
-      nombreTrabajador.style.color = '#2563eb';
-      nombreTrabajador.style.marginBottom = '4px';
-      cell.appendChild(nombreTrabajador);
-    }
+    // Mostrar trabajador si hay parte
+    const partes = partesDia[d]||[];
+    partes.forEach(p=>{
+      const badge=document.createElement('div');
+      badge.classList.add('partBadge');
+      badge.textContent=p.trabajador;
+      cell.appendChild(badge);
+    });
 
-    // Botón "+"
-    const addBtn = document.createElement('button');
-    addBtn.textContent = '+';
-    addBtn.style.position = 'absolute';
-    addBtn.style.bottom = '4px';
-    addBtn.style.right = '4px';
-    addBtn.style.width = '24px';
-    addBtn.style.height = '24px';
-    addBtn.style.border = 'none';
-    addBtn.style.borderRadius = '50%';
-    addBtn.style.background = '#2563eb';
-    addBtn.style.color = '#fff';
-    addBtn.style.cursor = 'pointer';
-    addBtn.onclick = () => abrirModalParte(d);
+    // Botón +
+    const btn = document.createElement('button');
+    btn.textContent='+';
+    btn.style.position='absolute';
+    btn.style.bottom='4px';
+    btn.style.right='4px';
+    btn.style.width='24px'; btn.style.height='24px';
+    btn.style.border='none'; btn.style.borderRadius='50%';
+    btn.style.background='#2563eb'; btn.style.color='#fff';
+    btn.onclick=()=>abrirModalParte(d);
+    cell.appendChild(btn);
 
-    cell.appendChild(addBtn);
-
-    grid.appendChild(cell);
+    calendar.appendChild(cell);
   }
-
-  calendar.appendChild(grid);
 }
 
 /* ================= PARTES ================= */
-let currentDay=null;   // Día seleccionado en el calendario
-let partesDia={};      // Partes guardadas para el día seleccionado
-
 function abrirModalParte(day){
-  currentDay = day;
-  partesDia[day] = partesDia[day] || [];
+  currentDay=day;
+  partesDia[day] = partesDia[day]||[];
+  show('partModal');
+  document.getElementById('modalDayTitle').textContent=day;
 
-  document.getElementById('parteModal').classList.remove('hidden');
-
-  // Limpiar container
-  document.getElementById('trabajosContainer').innerHTML = '';
+  const container=document.getElementById('trabajosContainer');
+  container.innerHTML='';
 
   // Cargar trabajadores frecuentes
-  cargarTrabajadoresFrecuentes();
+  const select=document.getElementById('parteTrabajadorFrecuente');
+  select.innerHTML='<option value="">-- Selecciona --</option>';
+  const nombres = new Set();
+  Object.values(partesDia).forEach(arr=>arr.forEach(p=>nombres.add(p.trabajador)));
+  nombres.forEach(n=>select.appendChild(new Option(n,n)));
 
-  // Si ya hay partes guardadas en ese día, mostrar la primera (puedes ajustar para seleccionar cuál mostrar)
-  if(partesDia[day].length > 0){
-    const parte = partesDia[day][0]; // tomamos la primera parte
-    document.getElementById('parteTrabajadorFrecuente').value = parte.trabajador;
-    document.getElementById('parteNombre').value = parte.trabajador;
-    document.getElementById('parteRango').value = parte.rango;
-
-    parte.trabajos.forEach(t => addTrabajo(t.descripcion, t.horas));
-  } else {
-    // Si no hay partes, añadir un trabajo inicial vacío
-    addTrabajo();
-  }
+  if(partesDia[day].length>0){
+    const parte = partesDia[day][0];
+    document.getElementById('parteNombre').value=parte.trabajador;
+    document.getElementById('parteRango').value=parte.rango;
+    parte.trabajos.forEach(t=>addTrabajo(t.descripcion,t.horas));
+  } else addTrabajo();
 
   actualizarHorasTotales();
 }
 
+function cerrarModalParte(){ hide('partModal'); }
 
-function cerrarModalParte(){
-  document.getElementById('parteModal').classList.add('hidden');
-}
-
-function cargarTrabajadoresFrecuentes(){
-  const select = document.getElementById('parteTrabajadorFrecuente');
-  select.innerHTML = '<option value="">-- Selecciona --</option>';
-  // Recorre todas las partes de la empresa para rellenar el select
-  const nombres = new Set();
-  Object.values(partesDia).forEach(arr => {
-    arr.forEach(p => nombres.add(p.trabajador));
-  });
-  nombres.forEach(n => {
-    const opt = document.createElement('option');
-    opt.value = n;
-    opt.textContent = n;
-    select.appendChild(opt);
-  });
-}
-
-// Cuando se selecciona un trabajador frecuente, rellena automáticamente el nombre
-document.getElementById('parteTrabajadorFrecuente')?.addEventListener('change', function(){
-  document.getElementById('parteNombre').value = this.value;
-});
-
-function addTrabajo(descripcion='', horas=''){
-  const container = document.getElementById('trabajosContainer');
-  const div = document.createElement('div');
-  div.style.display = 'flex';
-  div.style.gap = '8px';
-  div.style.marginBottom = '6px';
-
-  const descInput = document.createElement('input');
-  descInput.placeholder = 'Trabajo realizado';
-  descInput.value = descripcion;
-  descInput.style.flex = '2';
-
-  const horasInput = document.createElement('input');
-  horasInput.type = 'number';
-  horasInput.placeholder = 'Horas';
-  horasInput.value = horas;
-  horasInput.style.flex = '1';
-  horasInput.addEventListener('input', actualizarHorasTotales);
-
-  const btnEliminar = document.createElement('button');
-  btnEliminar.textContent = 'Eliminar';
-  btnEliminar.onclick = () => { div.remove(); actualizarHorasTotales(); };
-
-  div.appendChild(descInput);
-  div.appendChild(horasInput);
-  div.appendChild(btnEliminar);
-
+function addTrabajo(desc='',horas=''){
+  const container=document.getElementById('trabajosContainer');
+  const div=document.createElement('div');
+  const descInput=document.createElement('input');
+  descInput.placeholder='Trabajo realizado'; descInput.value=desc; descInput.style.flex='2';
+  const horasInput=document.createElement('input'); horasInput.type='number'; horasInput.placeholder='Horas'; horasInput.value=horas; horasInput.style.flex='1';
+  horasInput.addEventListener('input',actualizarHorasTotales);
+  const btnDel=document.createElement('button'); btnDel.textContent='Eliminar'; btnDel.onclick=()=>{div.remove(); actualizarHorasTotales();};
+  div.appendChild(descInput); div.appendChild(horasInput); div.appendChild(btnDel);
   container.appendChild(div);
 }
 
 function actualizarHorasTotales(){
-  const container = document.getElementById('trabajosContainer');
-  let total = 0;
-  container.querySelectorAll('input[type="number"]').forEach(inp => {
-    const val = parseFloat(inp.value);
-    if(!isNaN(val)) total += val;
+  const container=document.getElementById('trabajosContainer');
+  let total=0;
+  container.querySelectorAll('input[type="number"]').forEach(inp=>{
+    const val=parseFloat(inp.value);
+    if(!isNaN(val)) total+=val;
   });
-  document.getElementById('horasTotales').value = total;
+  document.getElementById('horasTotales').value=total;
 }
 
 async function guardarParte(){
-  const trabajador = document.getElementById('parteNombre').value.trim();
-  const rango = document.getElementById('parteRango').value.trim();
-  if(!trabajador || !rango){
-    alert('Completa nombre y rango');
-    return;
-  }
-
-  const trabajos = [];
-  document.getElementById('trabajosContainer').querySelectorAll('div').forEach(div=>{
-    const inputs = div.querySelectorAll('input');
-    const desc = inputs[0].value.trim();
-    const hrs = parseFloat(inputs[1].value);
-    if(desc && !isNaN(hrs)) trabajos.push({descripcion: desc, horas: hrs});
+  const trabajador=document.getElementById('parteNombre').value.trim();
+  const rango=document.getElementById('parteRango').value.trim();
+  if(!trabajador || !rango){alert('Completa nombre y rango');return;}
+  const trabajos=[];
+  document.querySelectorAll('#trabajosContainer > div').forEach(div=>{
+    const inputs=div.querySelectorAll('input');
+    const desc=inputs[0].value.trim();
+    const hrs=parseFloat(inputs[1].value);
+    if(desc && !isNaN(hrs)) trabajos.push({descripcion:desc,horas:hrs});
   });
-
-  if(trabajos.length === 0){
-    alert('Añade al menos un trabajo con horas');
-    return;
-  }
-
+  if(trabajos.length===0){alert('Añade al menos un trabajo'); return;}
   const horasTotales = trabajos.reduce((acc,t)=>acc+t.horas,0);
-
-  // Si ya hay una parte, actualizamos la primera
-  if(partesDia[currentDay].length > 0){
-    partesDia[currentDay][0] = {trabajador, rango, trabajos, horasTotales};
-  } else {
-    partesDia[currentDay].push({trabajador, rango, trabajos, horasTotales});
-  }
+  partesDia[currentDay] = [{trabajador,rango,trabajos,horasTotales}];
 
   await db.ref(`users/${currentUser.uid}/companies/${currentCompany}/calendar/${currentYear}/${currentMonth+1}/${currentDay}`)
           .set(partesDia[currentDay]);
 
   cerrarModalParte();
-  alert('Parte guardado correctamente!');
+  renderCalendar();
 }
 
-/* ================= LOGOUT / VOLVER ================= */
+/* ================= LOGOUT ================= */
 function logout(){auth.signOut();}
-function backToMenu(){
-  currentCompany = null;
-  hide('calendarView');
-  show('companyMenu');
-}
-
-
-function cargarPartesDiaFromDB(calendarData) {
-  // Reiniciar
-  partesDia = {};
-
-  // Si no hay datos, salimos
-  if (!calendarData) return;
-
-  // Los datos suelen estar guardados por año -> mes -> día
-  const yearData = calendarData[currentYear] || {};
-  const monthData = yearData[currentMonth + 1] || {}; // +1 porque meses en JS van 0-11
-
-  Object.keys(monthData).forEach(day => {
-    // Guardamos un array de partes por cada día
-    partesDia[parseInt(day)] = monthData[day];
-  });
-}
-
-
 </script>
-
-<!-- MODAL DE PARTES -->
-<div id="parteModal" class="hidden" style="
-  position:fixed;
-  top:0; left:0; right:0; bottom:0;
-  background:rgba(0,0,0,0.5);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  z-index:1000;
-">
-  <div style="
-    background:#fff;
-    padding:20px;
-    border-radius:8px;
-    max-width:600px;
-    width:90%;
-    max-height:90%;
-    overflow:auto;
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  ">
-    <h3>Nuevo Parte</h3>
-
-    <label>Trabajador frecuente:</label>
-    <select id="parteTrabajadorFrecuente">
-      <option value="">-- Selecciona --</option>
-    </select>
-
-    <label>Nombre del trabajador:</label>
-    <input type="text" id="parteNombre">
-
-    <label>Rango:</label>
-    <input type="text" id="parteRango">
-
-    <div id="trabajosContainer">
-      <h4>Trabajos realizados</h4>
-      <!-- Aquí se añadirán dinámicamente los trabajos -->
-    </div>
-
-    <button onclick="addTrabajo()">+ Añadir trabajo</button>
-
-    <label>Horas totales:</label>
-    <input type="number" id="horasTotales" readonly style="background:#eee;">
-
-    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
-      <button onclick="guardarParte()">Guardar</button>
-      <button onclick="cerrarModalParte()">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-
 </body>
 </html>
