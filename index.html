@@ -892,19 +892,25 @@ function registerUser() {
     .then(userCredential => {
       const user = userCredential.user;
 
-      // Guardar rol en Firebase
+      // 🔹 Guardar rol en Firebase
       db.ref(`users/${user.uid}/info`).set({
         email: email,
         role: role
-      }).then(() => {
-        alert("Usuario registrado correctamente");
+      })
+      .then(() => {
+        // 🔹 Actualizamos currentUser
         currentUser = user;
 
-        // Mostrar app y menú de empresas
+        // 🔹 Limpiamos y ocultamos formularios
         document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('loginView').style.display = 'none';
+
+        // 🔹 Mostramos la app y menú de empresas
         document.getElementById('appView').style.display = 'block';
         showMenu();
-      }).catch(err => alert("Error guardando rol: " + err.message));
+
+      })
+      .catch(err => alert("Error guardando rol: " + err.message));
     })
     .catch(err => alert(err.message));
 }
