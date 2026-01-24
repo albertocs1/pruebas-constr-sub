@@ -223,7 +223,7 @@ function renderCompanyList(){
   });
 }
 
-function addCompany(){
+async function addCompany(){
   const name = document.getElementById('newCompanyName').value.trim();
   if(!name) return;
   if(companyData[name]) { alert('Ya existe esa empresa'); return; }
@@ -232,52 +232,62 @@ function addCompany(){
   document.getElementById('newCompanyName').value = '';
   currentCompany = name;
 
-  db.ref(`users/${currentUser.uid}/companies/${name}`)
-  .set(companyData[name])
-  .then(() => {
-    console.log(`Empresa "${name}" guardada correctamente en Firebase`);
-
-    // 🔹 Actualizar lista de empresas
+  try {
+    await db.ref(`users/${currentUser.uid}/companies/${name}`).set(companyData[name]);
     renderCompanyList();
 
     // 🔹 Abrir automáticamente el calendario de la empresa recién creada
-    openCompany(name);
-  })
-  .catch(err => {
+    await openCompany(name);
+
+  } catch(err) {
     console.error("Error guardando empresa:", err);
     alert("Error guardando empresa: " + err.message);
-  });
-
+  }
 }
 
 
-function openCompany(name){
+
+async function openCompany(name){
   show('loadingScreen');
   hide('companyMenu');
 
-  currentCompany=name;
-  const now=new Date();
-  currentMonth=now.getMonth();
-  currentYear=now.getFullYear();
+  currentCompany = name;
+  const now = new Date();
+  currentMonth = now.getMonth();
+  currentYear = now.getFullYear();
 
-  ensureCompanyReady(0);
+  await ensureCompanyReady(); // ✅ Espera a que la empresa esté lista antes de renderizar
 }
 
-function ensureCompanyReady(attempt){
-  if(attempt>10){
-    companyData[currentCompany]={calendar:{}};
+
+
+async function ensureCompanyReady(attempt = 0) {
+  if(attempt > 10){
+    companyData[currentCompany] = { calendar:{} };
     renderCalendar();
     return;
   }
 
-  loadCompanies();
+  await loadCompaniesAsync(); // Esperar a que carguen los datos
+
   if(companyData[currentCompany]){
     renderCalendar();
-  }else{
-    setTimeout(()=>ensureCompanyReady(attempt+1),200);
+  } else {
+    setTimeout(() => ensureCompanyReady(attempt + 1), 200);
   }
 }
 
+
+
+
+function loadCompaniesAsync() {
+  return db.ref('users/' + currentUser.uid + '/companies')
+           .once('value')
+           .then(s => {
+             companyData = s.val() || {};
+           });
+}
+  
 /* ================= CALENDARIO ================= */
 function renderCalendar(){
   hide('loadingScreen');
