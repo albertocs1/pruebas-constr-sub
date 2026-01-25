@@ -493,8 +493,9 @@ function loadSubcontractorsDropdown() {
       let hasSubcontractors = false;
 
       Object.entries(users).forEach(([uid, userData]) => {
-        if (userData.info && userData.info.role?.trim().toLowerCase() === "subcontratista") {
-          // Evitar duplicados si ya está agregado como empresa
+        const role = (userData.info?.role || "").trim().toLowerCase();
+
+        if (role === "subcontratista") {
           if (!companyData[uid]) {
             const opt = document.createElement('option');
             opt.value = uid;
@@ -507,13 +508,13 @@ function loadSubcontractorsDropdown() {
 
       if (!hasSubcontractors) {
         const opt = document.createElement('option');
-        opt.value = "";
         opt.textContent = "No hay subcontratistas registrados";
         select.appendChild(opt);
       }
     })
     .catch(err => console.error("Error cargando subcontratistas:", err));
 }
+
 
 
 function renderCompanyList(){
