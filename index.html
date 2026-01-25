@@ -413,32 +413,11 @@ function showMenu() {
   // 🔹 Cargar empresas desde Firebase y renderizar
   loadFromStorage(() => {
     renderCompanyList();
-
-    // 🔹 Solo si es Contratista: cargar subcontratistas en el dropdown
-    if (currentUserRole === "Contratista") {
-      const select = document.getElementById('subcontractorSelect');
-      select.innerHTML = '<option value="">Seleccione Subcontratista</option>';
-
-      db.ref('users').once('value')
-        .then(snapshot => {
-          const users = snapshot.val() || {};
-          Object.entries(users).forEach(([uid, userData]) => {
-            if (
-              userData.info &&
-              String(userData.info.role).toLowerCase() === "subcontratista" && // evita mayúsculas/minúsculas
-              !companyData[uid] // evitar duplicados en la lista de empresas
-            ) {
-              const opt = document.createElement('option');
-              opt.value = uid;
-              opt.textContent = userData.info.email;
-              select.appendChild(opt);
-            }
-          });
-        })
-        .catch(err => console.error("Error cargando subcontratistas:", err));
-    }
+    // 🔹 Cargar subcontratistas si es Contratista
+    loadSubcontractorsDropdown();
   });
 }
+
 
 function addCompany(){
   if(!currentUser) return alert("Usuario no autenticado");
@@ -498,6 +477,42 @@ function addSubcontractorAsCompany() {
       alert(`Subcontratista ${subInfo.email} añadido como empresa correctamente`);
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
+}
+
+function loadSubcontractorsDropdown() {
+  if (!currentUserRole || currentUserRole !== "Contratista") return;
+
+  const select = document.getElementById('subcontractorSelect');
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Seleccione Subcontratista</option>';
+
+  db.ref('users').once('value')
+    .then(snapshot => {
+      const users = snapshot.val() || {};
+      let hasSubcontractors = false;
+
+      Object.entries(users).forEach(([uid, userData]) => {
+        if (userData.info && userData.info.role?.trim().toLowerCase() === "subcontratista") {
+          // Evitar duplicados si ya está agregado como empresa
+          if (!companyData[uid]) {
+            const opt = document.createElement('option');
+            opt.value = uid;
+            opt.textContent = userData.info.email;
+            select.appendChild(opt);
+            hasSubcontractors = true;
+          }
+        }
+      });
+
+      if (!hasSubcontractors) {
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.textContent = "No hay subcontratistas registrados";
+        select.appendChild(opt);
+      }
+    })
+    .catch(err => console.error("Error cargando subcontratistas:", err));
 }
 
 
