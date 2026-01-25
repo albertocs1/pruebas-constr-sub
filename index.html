@@ -447,7 +447,7 @@ function addCompany(){
   renderCompanyList();
 }
 
-function addSubcontractorAsCompany() {
+ffunction addSubcontractorAsCompany() {
   const subUid = document.getElementById('subcontractorSelect').value;
   if (!subUid) return alert("Seleccione un subcontratista");
 
@@ -455,41 +455,39 @@ function addSubcontractorAsCompany() {
     return alert("Este subcontratista ya está en su lista de empresas");
   }
 
+  // Leer info del subcontratista
   db.ref(`users/${subUid}/info`).once('value')
     .then(snapshot => {
       const subInfo = snapshot.val();
       if (!subInfo) return alert("No se pudo obtener info del subcontratista");
 
-      // Guardamos la empresa del subcontratista en el contratista
-      companyData[subUid] = {
-        displayName: subInfo.email,
-        calendar: {},        // inicialmente vacío
+      // Crear objeto de empresa para el subcontratista
+      const companyForSub = {
+        displayName: subInfo.email,        // nombre que verá el subcontratista
+        calendar: {},                      // inicialmente vacío
         templates: [],
-        addedByUid: currentUser.uid,
-        addedByCompanyKey: currentCompany // clave real de la empresa del contratista
+        addedByUid: currentUser.uid,       // UID del contratista
+        addedByCompanyKey: currentCompany  // clave de la empresa del contratista
       };
 
-      saveToStorage();
-      renderCompanyList();
+      // Guardar localmente
+      companyData[subUid] = companyForSub;
 
-      const select = document.getElementById('subcontractorSelect');
-      const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
-      if (optionToRemove) optionToRemove.remove();
+      // Guardar en Firebase
+      db.ref(`users/${subUid}/companies/${currentUser.uid}`).set(companyForSub)
+        .then(() => {
+          console.log("Subcontratista actualizado correctamente con todas las propiedades");
+          alert(`Subcontratista ${subInfo.email} añadido correctamente`);
 
-      // Actualizamos la empresa del subcontratista para reflejar al contratista
-      db.ref(`users/${subUid}/companies/${currentUser.uid}`).set({
-        displayName: currentUser.email,
-        addedBy: currentUser.email,
-        addedByUid: currentUser.uid,
-        addedByCompanyKey: currentCompany,
-        calendar: {},        // inicialmente vacío
-        templates: []
-      })
-      .then(() => {
-        console.log("Subcontratista actualizado con la empresa del contratista");
-        alert(`Subcontratista ${subInfo.email} añadido correctamente`);
-      })
-      .catch(err => alert("Error actualizando subcontratista: " + err.message));
+          // Actualizar lista de empresas inmediatamente
+          renderCompanyList();
+
+          // Quitar del dropdown
+          const select = document.getElementById('subcontractorSelect');
+          const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
+          if (optionToRemove) optionToRemove.remove();
+        })
+        .catch(err => alert("Error actualizando subcontratista: " + err.message));
 
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
