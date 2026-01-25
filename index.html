@@ -556,18 +556,44 @@ function renderCompanyList(){
 
 function openCompany(name){
   currentCompany = name;
+
+  // Si la empresa no existe localmente, crear estructura
   if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
-  if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
-  if(!companyData[currentCompany].templates) companyData[currentCompany].templates = [];
 
   const today = new Date();
   currentMonth = today.getMonth();
   currentYear = today.getFullYear();
+
   document.getElementById('companyMenu').style.display = 'none';
   document.getElementById('calendarView').style.display = 'block';
-  document.getElementById('selectedCompanyName').textContent = name;
-  renderCalendar();
+  document.getElementById('selectedCompanyName').textContent = companyData[currentCompany].displayName || name;
+
+  // 🔹 Determinar modo solo lectura
+  window.readOnlyMode = false;
+
+  // Si el usuario actual es subcontratista y la empresa tiene "addedBy"
+  if(currentUserRole === "subcontratista" && companyData[currentCompany].addedBy){
+    window.readOnlyMode = true;
+    alert("Modo solo lectura: no puede añadir ni editar registros en esta empresa");
+
+    // 🔹 Cargar calendario del contratista desde Firebase
+    const contratistaUid = companyData[currentCompany].addedBy;
+    db.ref(`users/${contratistaUid}/companies/${contratistaUid}/calendar`).once('value')
+      .then(snapshot => {
+        companyData[currentCompany].calendar = snapshot.val() || {};
+        renderCalendar();
+      })
+      .catch(err => {
+        console.error("Error cargando calendario del contratista:", err);
+        companyData[currentCompany].calendar = {};
+        renderCalendar();
+      });
+  } else {
+    // 🔹 Modo normal: propio calendario
+    renderCalendar();
+  }
 }
+
 function backToMenu(){ currentCompany = null; showMenu(); }
 
 function prevMonth(){ currentMonth--; if(currentMonth < 0){ currentMonth = 11; currentYear--; } renderCalendar(); }
@@ -604,6 +630,7 @@ document.getElementById('showMenuBtn').onclick = showMenu;
   
 // ==== Render calendario ====
 // IMPORTANTE: ahora normalizamos dateKey a 'YYYY-MM-DD' con ceros a la izquierda
+  
 function renderCalendar(){
   const calendarDiv = document.getElementById('calendar');
   calendarDiv.innerHTML = '';
@@ -643,7 +670,15 @@ function renderCalendar(){
     const btn = document.createElement('button');
     btn.textContent = '+';
     btn.className = 'add-btn';
-    btn.onclick = (ev) => { ev.stopPropagation(); openModal(dateKey, false); };
+    btn.onclick = (ev) => { 
+      ev.stopPropagation(); 
+      if(window.readOnlyMode){
+        alert("No puede añadir registros en modo solo lectura");
+      } else {
+        openModal(dateKey,false);
+      }
+    };
+
     div.appendChild(btn);
 
     const dayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
@@ -674,8 +709,18 @@ function renderCalendar(){
       div.appendChild(preview);
     }
 
-    div.onclick = () => { if(companyData[currentCompany].calendar[dateKey]) showDaySummary(dateKey); else openModal(dateKey,false); };
-    calendarDiv.appendChild(div);
+    div.onclick = () => {
+  if(companyData[currentCompany].calendar[dateKey]) {
+    showDaySummary(dateKey);
+  } else {
+    if(window.readOnlyMode){
+      alert("No puede añadir registros en modo solo lectura");
+    } else {
+      openModal(dateKey,false);
+        }  
+      }
+    };
+
   }
 }
 
@@ -807,6 +852,7 @@ function saveEntry(entryIndex = null){
 
 
 // ==== Mostrar resumen de un día ====
+  
 function showDaySummary(dateKey){
   const entries = companyData[currentCompany].calendar[dateKey];
   const modalContent = document.getElementById('modalContentArea');
@@ -826,26 +872,30 @@ function showDaySummary(dateKey){
     totalP.textContent = `Total Horas: ${e.total}`;
     workerDiv.appendChild(totalP);
 
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Editar';
-    editBtn.className = 'summary-btn edit';
-    editBtn.onclick = () => openModal(dateKey, false, e, index);
+// ---------- Solo mostrar botones si NO estamos en modo solo lectura ----------
+    if(!window.readOnlyMode){
+      const editBtn = document.createElement('button');
+      editBtn.textContent = 'Editar';
+      editBtn.className = 'summary-btn edit';
+      editBtn.onclick = () => openModal(dateKey, false, e, index);
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Eliminar';
-    deleteBtn.className = 'summary-btn delete';
-    deleteBtn.onclick = () => {
-      if(confirm('Eliminar este registro?')){
-        entries.splice(index,1);
-        if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
-        saveToStorage();
-        showDaySummary(dateKey);
-        renderCalendar();
-      }
-    };
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Eliminar';
+      deleteBtn.className = 'summary-btn delete';
+      deleteBtn.onclick = () => {
+        if(confirm('Eliminar este registro?')){
+          entries.splice(index,1);
+          if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+          saveToStorage();
+          showDaySummary(dateKey);
+          renderCalendar();
+        }
+      };
 
-    workerDiv.appendChild(editBtn);
-    workerDiv.appendChild(deleteBtn);
+      workerDiv.appendChild(editBtn);
+      workerDiv.appendChild(deleteBtn);
+    }
+
     workerDiv.appendChild(document.createElement('hr'));
     summaryDiv.appendChild(workerDiv);
   });
