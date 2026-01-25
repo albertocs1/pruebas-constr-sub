@@ -569,7 +569,7 @@ function openCompany(name){
   window.readOnlyMode = false;
 
   // 🔹 Si el usuario es subcontratista y esta empresa fue añadida por un contratista
-  if(currentUserRole === "subcontratista" && companyData[currentCompany].addedByUid){
+  if((currentUserRole || "").toLowerCase() === "subcontratista" && companyData[currentCompany].addedByUid){
     window.readOnlyMode = true;
     const contratistaUid = companyData[currentCompany].addedByUid;
     const companyKey = companyData[currentCompany].addedByCompanyKey || contratistaUid;
@@ -851,9 +851,9 @@ function saveEntry(entryIndex = null){
   }
 
   // 🔹 Guardar en Firebase solo si es contratista
-  if(currentUserRole === "contratista"){
+  if((currentUserRole || "").toLowerCase() === "contratista"){
     saveToStorage();
-  }
+}
 
   renderCalendar();
   closeModal();
