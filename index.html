@@ -234,10 +234,19 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
   <p id="currentUserEmail" style="font-size:0.9rem; color:#555; margin-bottom:8px;"></p>
   
   <div id="companyList"></div>
+  <!-- Añadir empresa nueva -->
   <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
     <input type="text" id="newCompanyName" placeholder="Nueva empresa">
     <button onclick="addCompany()" class="back-btn">Añadir</button>
   </div>
+  <!-- Añadir Subcontratista -->
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+  <select id="subcontractorSelect">
+    <option value="">Añadir Subcontratista existente</option>
+  </select>
+  <button onclick="addSubcontractorAsCompany()" class="back-btn">Añadir</button>
+</div>
+
   
   <div style="margin-top:10px;">
     <button id="logoutBtn" class="back-btn" style="background:#ef4444; width:100%;">Cerrar sesión / Cambiar usuario</button>
@@ -404,6 +413,22 @@ function showMenu(){
   loadFromStorage(() => {
     renderCompanyList();
   });
+  
+  // Cargar Subcontratistas en desplegable (solo para Contratista)
+  if(currentUserRole==="Contratista"){
+    const select = document.getElementById('subcontractorSelect');
+    select.innerHTML='<option value="">Seleccione Subcontratista</option>';
+    db.ref('users').once('value').then(snapshot=>{
+      const users = snapshot.val()||{};
+      for(const uid in users){
+        if(users[uid].info && users[uid].info.role==="Subcontratista"){
+          const opt=document.createElement('option'); opt.value=uid; opt.textContent=users[uid].info.email; select.appendChild(opt);
+        }
+      }
+    });
+  }
+
+  
 }
 
 
@@ -431,10 +456,21 @@ function addCompany(){
   renderCompanyList();
 }
 
+function addSubcontractorAsCompany(){
+  const subUid = document.getElementById('subcontractorSelect').value;
+  if(!subUid) return alert("Seleccione un subcontratista");
+  if(companyData[subUid]){
+    return alert("Este subcontratista ya está en su lista de empresas");
+  }
 
+  // Creamos “empresa” usando el UID del Subcontratista
+  companyData[subUid] = { calendar: {}, templates: [] };
 
-
-
+  // Guardamos en Firebase bajo el Contratista actual
+  saveToStorage();
+  renderCompanyList();
+  alert("Subcontratista añadido como empresa correctamente");
+}
 
 function renderCompanyList(){
   const container = document.getElementById('companyList');
