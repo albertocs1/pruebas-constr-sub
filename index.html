@@ -414,12 +414,12 @@ function showMenu() {
   loadFromStorage(() => {
     renderCompanyList();
     // 🔹 Cargar subcontratistas si es Contratista
-    db.ref('users/' + uid + '/info/role')
+    db.ref('users/' + currentUser.uid + '/info/role')
   .once('value')
   .then(snapshot => {
     currentUserRole = (snapshot.val() || "").trim().toLowerCase();
     loadSubcontractorsDropdown();
-     });
+  });
   });
 }
 
