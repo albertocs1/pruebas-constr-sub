@@ -341,6 +341,7 @@ const auth = firebase.auth();
 let companyData = {};
 let currentCompany = null;
 let currentUser = null;
+let currentUserRole = null;
 let currentDate = null;
 let currentMonth = null;
 let currentYear = null;
@@ -932,13 +933,29 @@ if(calContainer && weekdaysContainer){
 auth.onAuthStateChanged(user => {
   document.getElementById('loadingView').style.display = 'none';
 
-  if(user){
-    currentUser = user;
-    document.getElementById('loginView').style.display = 'none';
-    document.getElementById('appView').style.display = 'block';
-    
-    // 🔹 Mostrar menú de empresas correctamente
-    showMenu();
+if(user){
+  currentUser = user;
+
+  // 🔹 Leer el rol del usuario desde Firebase
+  db.ref(`users/${user.uid}/info/role`)
+    .once('value')
+    .then(snapshot => {
+      currentUserRole = snapshot.val();
+
+      console.log("Rol del usuario:", currentUserRole);
+
+      // 🔹 Mostrar la app
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('appView').style.display = 'block';
+
+      // 🔹 Mostrar menú de empresas
+      showMenu();
+    })
+    .catch(err => {
+      alert("Error leyendo rol de usuario: " + err.message);
+    });
+}
+
 
   } else {
     currentUser = null;
