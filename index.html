@@ -646,9 +646,11 @@ function renderCalendar(){
     const dateKey = `${currentYear}-${pad(currentMonth+1)}-${pad(day)}`;
     const div = document.createElement('div');
     div.className = 'day';
+    // Fines de semana
     if(((dateObj.getDay()+6)%7) >= 5) div.classList.add('weekend');
+    // Hoy
     if(dateKey === todayKey) div.classList.add('today');
-
+    // Número del día
     const dayNumber = document.createElement('div');
     dayNumber.textContent = day;
     dayNumber.style.position = 'absolute';
@@ -656,7 +658,7 @@ function renderCalendar(){
     dayNumber.style.left = '10px';
     dayNumber.style.fontWeight = '700';
     div.appendChild(dayNumber);
-
+    // Botón "+"
     const btn = document.createElement('button');
     btn.textContent = '+';
     btn.className = 'add-btn';
@@ -670,7 +672,8 @@ function renderCalendar(){
     };
 
     div.appendChild(btn);
-
+    
+    // Normalización de datos antiguos sin padding
     const dayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
 
     // Compatibilidad: si la data está almacenada con claves sin padding,
@@ -684,7 +687,8 @@ function renderCalendar(){
         delete companyData[currentCompany].calendar[altKey1];
       }
     }
-
+    
+    // Previsualización de trabajadores si existen
     const finalDayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
 
     if(finalDayData && finalDayData.length > 0){
@@ -699,6 +703,7 @@ function renderCalendar(){
       div.appendChild(preview);
     }
 
+    // Click en el día para resumen o modal
     div.onclick = () => {
   if(companyData[currentCompany].calendar[dateKey]) {
     showDaySummary(dateKey);
@@ -711,6 +716,8 @@ function renderCalendar(){
       }
     };
 
+     // 🔹 IMPORTANTE: añadir el div al calendario
+    calendarDiv.appendChild(div);
   }
 }
 
