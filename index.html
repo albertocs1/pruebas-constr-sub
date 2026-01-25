@@ -393,9 +393,8 @@ function loadFromStorage(callback){
     });
 }
 
-
-
 // ==== UI: menu / compañías ====
+  
 function showMenu() {
   if (!currentUser) {
     console.warn("Usuario no definido, showMenu cancelado");
@@ -410,18 +409,50 @@ function showMenu() {
   // 🔹 Mostrar email del usuario
   document.getElementById('currentUserEmail').textContent = "Conectado como: " + currentUser.email;
 
-  // 🔹 Cargar empresas desde Firebase y renderizar
+  // 🔹 Cargar empresas propias del usuario desde Firebase
   loadFromStorage(() => {
+
+    // 🔹 Renderizamos las empresas propias primero
     renderCompanyList();
-    // 🔹 Cargar subcontratistas si es Contratista
+
+    // 🔹 Obtener rol actual desde Firebase
     db.ref('users/' + currentUser.uid + '/info/role')
-  .once('value')
-  .then(snapshot => {
-    currentUserRole = (snapshot.val() || "").trim().toLowerCase();
-    loadSubcontractorsDropdown();
-  });
+      .once('value')
+      .then(snapshot => {
+        currentUserRole = (snapshot.val() || "").trim().toLowerCase();
+
+        if(currentUserRole === "contratista") {
+          // 🔹 Si es contratista, cargamos el dropdown de subcontratistas
+          loadSubcontractorsDropdown();
+
+        } else if(currentUserRole === "subcontratista") {
+          // 🔹 Si es subcontratista, buscamos contratistas que lo hayan añadido
+          db.ref('users/' + currentUser.uid + '/companies').once('value')
+            .then(compSnap => {
+              const linkedCompanies = compSnap.val() || {};
+
+              // Añadir solo las empresas vinculadas a contratistas
+              for(const uid in linkedCompanies){
+                if(linkedCompanies[uid].isLinkedToContratista){
+                  // 🔹 Evitar sobreescribir datos existentes
+                  companyData[uid] = {
+                    ...linkedCompanies[uid]
+                  };
+                }
+              }
+
+              // 🔹 Volvemos a renderizar para mostrar empresas del contratista
+              renderCompanyList();
+            })
+            .catch(err => console.error("Error cargando empresas vinculadas al contratista:", err));
+        }
+
+      })
+      .catch(err => console.error("Error leyendo rol de usuario:", err));
+
   });
 }
+
 
 
 function addCompany(){
@@ -480,6 +511,20 @@ function addSubcontractorAsCompany() {
       if (optionToRemove) optionToRemove.remove();
 
       alert(`Subcontratista ${subInfo.email} añadido como empresa correctamente`);
+      
+      // 🔹 Ahora actualizamos el subcontratista para que vea al contratista
+      const contratistaUid = currentUser.uid;
+      const contratistaEmail = currentUser.email;
+
+      // Guardamos en el subcontratista una “empresa” que apunta al contratista
+      db.ref(`users/${subUid}/companies/${contratistaUid}`).set({
+        displayName: contratistaEmail,
+        // **No duplicamos calendario**, solo apuntamos a la misma referencia del contratista
+        isLinkedToContratista: true  // indicador de que este calendario viene de un contratista
+      }).then(() => {
+        console.log(`Subcontratista ${subInfo.email} ahora ve al contratista ${contratistaEmail}`);
+      }).catch(err => console.error("Error actualizando subcontratista:", err));
+      
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
 }
@@ -538,18 +583,36 @@ function renderCompanyList(){
 
 function openCompany(name){
   currentCompany = name;
-  if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
-  if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
-  if(!companyData[currentCompany].templates) companyData[currentCompany].templates = [];
 
+  if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
+
+  // 🔹 Si esta empresa está vinculada a un contratista
+  const isLinked = companyData[currentCompany].isLinkedToContratista;
+
+  if(isLinked){
+    const contratistaUid = currentCompany; // en este caso, la clave es UID del contratista
+    db.ref(`users/${contratistaUid}/companies`).once('value')
+      .then(snapshot => {
+        const data = snapshot.val() || {};
+        companyData[currentCompany].calendar = data.calendar || {};
+        companyData[currentCompany].templates = data.templates || [];
+        showCalendarView();
+      });
+  } else {
+    showCalendarView();
+  }
+}
+
+function showCalendarView(){
   const today = new Date();
   currentMonth = today.getMonth();
   currentYear = today.getFullYear();
   document.getElementById('companyMenu').style.display = 'none';
   document.getElementById('calendarView').style.display = 'block';
-  document.getElementById('selectedCompanyName').textContent = name;
+  document.getElementById('selectedCompanyName').textContent = companyData[currentCompany].displayName || currentCompany;
   renderCalendar();
 }
+
 function backToMenu(){ currentCompany = null; showMenu(); }
 
 function prevMonth(){ currentMonth--; if(currentMonth < 0){ currentMonth = 11; currentYear--; } renderCalendar(); }
