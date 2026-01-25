@@ -461,7 +461,7 @@ function addSubcontractorAsCompany() {
       const subInfo = snapshot.val();
       if (!subInfo) return alert("No se pudo obtener info del subcontratista");
 
-      // 🔹 Creamos la “empresa” usando el UID, mostrando su email
+      // 🔹 Creamos la “empresa” en el contratista usando el UID del sub
       companyData[subUid] = {
         displayName: subInfo.email,
         calendar: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].calendar || {} : {},
@@ -471,7 +471,7 @@ function addSubcontractorAsCompany() {
       // 🔹 Guardamos cambios en Firebase bajo el Contratista actual
       saveToStorage();
 
-      // 🔹 Actualizar lista de empresas
+      // 🔹 Actualizar lista de empresas del contratista
       renderCompanyList();
 
       // 🔹 Quitar este subcontratista del dropdown para no duplicar
@@ -479,10 +479,22 @@ function addSubcontractorAsCompany() {
       const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
       if (optionToRemove) optionToRemove.remove();
 
-      alert(`Subcontratista ${subInfo.email} añadido como empresa correctamente`);
+      // 🔹 Ahora también actualizamos la empresa del subcontratista
+      db.ref(`users/${subUid}/companies/${currentUser.uid}`).set({
+        displayName: currentUser.email, // se puede cambiar por nombre de la empresa
+        calendar: {},
+        templates: []
+      })
+      .then(() => {
+        console.log("Subcontratista actualizado con la empresa del contratista");
+        alert(`Subcontratista ${subInfo.email} añadido correctamente`);
+      })
+      .catch(err => alert("Error actualizando subcontratista: " + err.message));
+
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
 }
+
 
 function loadSubcontractorsDropdown() {
   if ((currentUserRole || "").trim().toLowerCase() !== "contratista") return;
