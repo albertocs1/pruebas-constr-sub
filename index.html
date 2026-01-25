@@ -396,42 +396,49 @@ function loadFromStorage(callback){
 
 
 // ==== UI: menu / compañías ====
-function showMenu(){
-  document.getElementById('companyMenu').style.display = 'block';
-  document.getElementById('calendarView').style.display = 'none';
-  document.getElementById('selectedCompanyName').textContent = '';
-
-  if(!currentUser) {
+function showMenu() {
+  if (!currentUser) {
     console.warn("Usuario no definido, showMenu cancelado");
     return;
   }
 
-  // Mostrar email del usuario
+  // 🔹 Mostrar app y menú
+  document.getElementById('companyMenu').style.display = 'block';
+  document.getElementById('calendarView').style.display = 'none';
+  document.getElementById('selectedCompanyName').textContent = '';
+
+  // 🔹 Mostrar email del usuario
   document.getElementById('currentUserEmail').textContent = "Conectado como: " + currentUser.email;
 
-  // Cargar empresas desde Firebase y luego renderizar
+  // 🔹 Cargar empresas desde Firebase y renderizar
   loadFromStorage(() => {
     renderCompanyList();
+
+    // 🔹 Solo si es Contratista: cargar subcontratistas en el dropdown
+    if (currentUserRole === "Contratista") {
+      const select = document.getElementById('subcontractorSelect');
+      select.innerHTML = '<option value="">Seleccione Subcontratista</option>';
+
+      db.ref('users').once('value')
+        .then(snapshot => {
+          const users = snapshot.val() || {};
+          Object.entries(users).forEach(([uid, userData]) => {
+            if (
+              userData.info &&
+              String(userData.info.role).toLowerCase() === "subcontratista" && // evita mayúsculas/minúsculas
+              !companyData[uid] // evitar duplicados en la lista de empresas
+            ) {
+              const opt = document.createElement('option');
+              opt.value = uid;
+              opt.textContent = userData.info.email;
+              select.appendChild(opt);
+            }
+          });
+        })
+        .catch(err => console.error("Error cargando subcontratistas:", err));
+    }
   });
-  
-  // Cargar Subcontratistas en desplegable (solo para Contratista)
-  if(currentUserRole==="Contratista"){
-    const select = document.getElementById('subcontractorSelect');
-    select.innerHTML='<option value="">Seleccione Subcontratista</option>';
-    db.ref('users').once('value').then(snapshot=>{
-      const users = snapshot.val()||{};
-      for(const uid in users){
-        if(users[uid].info && users[uid].info.role==="Subcontratista"){
-          const opt=document.createElement('option'); opt.value=uid; opt.textContent=users[uid].info.email; select.appendChild(opt);
-        }
-      }
-    });
-  }
-
-  
 }
-
-
 
 function addCompany(){
   if(!currentUser) return alert("Usuario no autenticado");
