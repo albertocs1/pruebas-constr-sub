@@ -481,9 +481,10 @@ function addSubcontractorAsCompany() {
 
       // 🔹 Ahora también actualizamos la empresa del subcontratista
       db.ref(`users/${subUid}/companies/${currentUser.uid}`).set({
-        displayName: currentUser.email, // se puede cambiar por nombre de la empresa
-        calendar: {},
-        templates: []
+        displayName: currentUser.email, // lo que verá el subcontratista
+        addedBy: currentUser.email,     // aviso de quién lo añadió
+        calendar: {},                    // vacío inicialmente
+        templates: []                    // vacío inicialmente
       })
       .then(() => {
         console.log("Subcontratista actualizado con la empresa del contratista");
@@ -494,6 +495,7 @@ function addSubcontractorAsCompany() {
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
 }
+
 
 
 function loadSubcontractorsDropdown() {
@@ -534,15 +536,19 @@ function loadSubcontractorsDropdown() {
 }
 
 
-
 function renderCompanyList(){
   const container = document.getElementById('companyList');
   container.innerHTML = '';
+
   Object.keys(companyData).sort().forEach(c => {
     const div = document.createElement('div');
     div.className = 'company-item';
-    // 🔹 Si tiene displayName, mostrarlo; si no, mostrar la clave
-    div.textContent = companyData[c].displayName || c;
+
+    const companyName = companyData[c].displayName || c;
+    // Si existe addedBy, mostrar aviso
+    const addedBy = companyData[c].addedBy ? ` (Añadido por ${companyData[c].addedBy})` : '';
+    div.textContent = companyName + addedBy;
+
     div.onclick = () => openCompany(c);
     container.appendChild(div);
   });
