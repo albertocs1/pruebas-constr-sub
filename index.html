@@ -465,7 +465,8 @@ function addSubcontractorAsCompany() {
         calendar: {},
         templates: [],
         addedByUid: currentUser.uid,
-        addedByCompanyKey: currentCompany.trim() // <--- obligatorio
+        addedByCompanyKey: currentCompany, // obligatorio
+        addedBy: currentUser.email         // opcional, para mostrar quién lo añadió
       };
 
       companyData[subUid] = companyForSub;
