@@ -414,7 +414,12 @@ function showMenu() {
   loadFromStorage(() => {
     renderCompanyList();
     // 🔹 Cargar subcontratistas si es Contratista
+    db.ref('users/' + uid + '/info/role')
+  .once('value')
+  .then(snapshot => {
+    currentUserRole = (snapshot.val() || "").trim().toLowerCase();
     loadSubcontractorsDropdown();
+     });
   });
 }
 
@@ -480,7 +485,8 @@ function addSubcontractorAsCompany() {
 }
 
 function loadSubcontractorsDropdown() {
-  if (!currentUserRole || currentUserRole !== "Contratista") return;
+  if ((currentUserRole || "").trim().toLowerCase() !== "contratista") return;
+
 
   const select = document.getElementById('subcontractorSelect');
   if (!select) return;
@@ -1046,8 +1052,6 @@ if(user){
     .catch(err => {
       alert("Error leyendo rol de usuario: " + err.message);
     });
-
-
 
   } else {
     currentUser = null;
