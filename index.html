@@ -496,38 +496,36 @@ function addSubcontractorAsCompany() {
       companyData[subUid] = {
         displayName: subInfo.email,
         calendar: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].calendar || {} : {},
-        templates: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].templates || [] : []
+        templates: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].templates || [] : {}
       };
 
       // 🔹 Guardamos cambios en Firebase bajo el Contratista actual
       saveToStorage();
-
-      // 🔹 Actualizar lista de empresas
-      renderCompanyList();
 
       // 🔹 Quitar este subcontratista del dropdown para no duplicar
       const select = document.getElementById('subcontractorSelect');
       const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
       if (optionToRemove) optionToRemove.remove();
 
-      alert(`Subcontratista ${subInfo.email} añadido como empresa correctamente`);
-      
-      // 🔹 Ahora actualizamos el subcontratista para que vea al contratista
-      const contratistaUid = currentUser.uid;
-      const contratistaEmail = currentUser.email;
+      // 🔹 **NUEVO: Actualizar al subcontratista para que vea al contratista**
+      db.ref(`users/${subUid}/companies/${currentUser.uid}`).set({
+        displayName: currentUser.email,               // nombre del contratista
+        calendar: companyData[currentCompany].calendar || {},  // calendario del contratista
+        templates: companyData[currentCompany].templates || [],// templates del contratista
+        isLinkedToContratista: true                   // indicador de vínculo
+      })
+      .then(() => {
+        alert(`Subcontratista ${subInfo.email} añadido correctamente. Ahora verá al contratista y su calendario.`);
+      })
+      .catch(err => {
+        console.error("Error sincronizando con subcontratista:", err);
+        alert("No se pudo actualizar al subcontratista: " + err.message);
+      });
 
-      // Guardamos en el subcontratista una “empresa” que apunta al contratista
-      db.ref(`users/${subUid}/companies/${contratistaUid}`).set({
-        displayName: contratistaEmail,
-        // **No duplicamos calendario**, solo apuntamos a la misma referencia del contratista
-        isLinkedToContratista: true  // indicador de que este calendario viene de un contratista
-      }).then(() => {
-        console.log(`Subcontratista ${subInfo.email} ahora ve al contratista ${contratistaEmail}`);
-      }).catch(err => console.error("Error actualizando subcontratista:", err));
-      
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
 }
+
 
 function loadSubcontractorsDropdown() {
   if ((currentUserRole || "").trim().toLowerCase() !== "contratista") return;
