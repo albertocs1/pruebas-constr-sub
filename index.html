@@ -460,11 +460,13 @@ function addSubcontractorAsCompany() {
       const subInfo = snapshot.val();
       if (!subInfo) return alert("No se pudo obtener info del subcontratista");
 
-      // Creamos la “empresa” en el contratista usando UID del sub
+      // Guardamos la empresa del subcontratista en el contratista
       companyData[subUid] = {
         displayName: subInfo.email,
-        calendar: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].calendar || {} : {},
-        templates: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].templates || [] : {}
+        calendar: {},        // inicialmente vacío
+        templates: [],
+        addedByUid: currentUser.uid,
+        addedByCompanyKey: currentCompany // clave real de la empresa del contratista
       };
 
       saveToStorage();
@@ -474,12 +476,13 @@ function addSubcontractorAsCompany() {
       const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
       if (optionToRemove) optionToRemove.remove();
 
-      // 🔹 Actualizamos la empresa del subcontratista
+      // Actualizamos la empresa del subcontratista para reflejar al contratista
       db.ref(`users/${subUid}/companies/${currentUser.uid}`).set({
-        displayName: currentUser.email,   // lo que verá el subcontratista
-        addedBy: currentUser.email,       // aviso de quién lo añadió
-        addedByUid: currentUser.uid,      // <-- nuevo campo importante
-        calendar: {},                      // inicialmente vacío
+        displayName: currentUser.email,
+        addedBy: currentUser.email,
+        addedByUid: currentUser.uid,
+        addedByCompanyKey: currentCompany,
+        calendar: {},        // inicialmente vacío
         templates: []
       })
       .then(() => {
@@ -487,6 +490,7 @@ function addSubcontractorAsCompany() {
         alert(`Subcontratista ${subInfo.email} añadido correctamente`);
       })
       .catch(err => alert("Error actualizando subcontratista: " + err.message));
+
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
 }
@@ -560,7 +564,7 @@ function openCompany(name){
   document.getElementById('calendarView').style.display = 'block';
   document.getElementById('selectedCompanyName').textContent = companyData[currentCompany].displayName || name;
 
-  // 🔹 Determinar modo solo lectura
+  // Determinar modo solo lectura
   window.readOnlyMode = false;
 
   if(currentUserRole === "subcontratista" && companyData[currentCompany].addedByUid){
@@ -568,8 +572,9 @@ function openCompany(name){
     alert("Modo solo lectura: no puede añadir ni editar registros en esta empresa");
 
     const contratistaUid = companyData[currentCompany].addedByUid;
+    const companyKey = companyData[currentCompany].addedByCompanyKey || contratistaUid; // clave real de la empresa del contratista
 
-    db.ref(`users/${contratistaUid}/companies/${contratistaUid}/calendar`).once('value')
+    db.ref(`users/${contratistaUid}/companies/${companyKey}/calendar`).once('value')
       .then(snapshot => {
         companyData[currentCompany].calendar = snapshot.val() || {};
         renderCalendar();
@@ -584,6 +589,7 @@ function openCompany(name){
     renderCalendar();
   }
 }
+
 function backToMenu(){ currentCompany = null; showMenu(); }
 
 function prevMonth(){ currentMonth--; if(currentMonth < 0){ currentMonth = 11; currentYear--; } renderCalendar(); }
