@@ -560,20 +560,21 @@ function openCompany(name){
   currentMonth = today.getMonth();
   currentYear = today.getFullYear();
 
+  // Mostrar calendario y ocultar menú
   document.getElementById('companyMenu').style.display = 'none';
   document.getElementById('calendarView').style.display = 'block';
   document.getElementById('selectedCompanyName').textContent = companyData[currentCompany].displayName || name;
 
-  // Determinar modo solo lectura
+  // Por defecto, permitimos edición
   window.readOnlyMode = false;
 
+  // 🔹 Si el usuario es subcontratista y esta empresa fue añadida por un contratista
   if(currentUserRole === "subcontratista" && companyData[currentCompany].addedByUid){
     window.readOnlyMode = true;
-    alert("Modo solo lectura: no puede añadir ni editar registros en esta empresa");
-
     const contratistaUid = companyData[currentCompany].addedByUid;
-    const companyKey = companyData[currentCompany].addedByCompanyKey || contratistaUid; // clave real de la empresa del contratista
+    const companyKey = companyData[currentCompany].addedByCompanyKey || contratistaUid;
 
+    // Cargar calendario del contratista
     db.ref(`users/${contratistaUid}/companies/${companyKey}/calendar`).once('value')
       .then(snapshot => {
         companyData[currentCompany].calendar = snapshot.val() || {};
@@ -586,9 +587,11 @@ function openCompany(name){
       });
 
   } else {
+    // Contratista ve su propio calendario
     renderCalendar();
   }
 }
+
 
 function backToMenu(){ currentCompany = null; showMenu(); }
 
@@ -819,6 +822,12 @@ function updateTotalHours(){
 }
 
 function saveEntry(entryIndex = null){
+  // Si estamos en modo solo lectura, no permitir guardar
+  if(window.readOnlyMode){
+    alert("No puede añadir registros en modo solo lectura");
+    return;
+  }
+
   const name = document.getElementById('quickWorkerName').value.trim();
   const rank = document.getElementById('quickWorkerRank').value.trim();
   if(!name) return alert("Ingrese nombre del trabajador");
@@ -841,14 +850,9 @@ function saveEntry(entryIndex = null){
     }
   }
 
-  // 🔹 Guardar cambios correctamente según rol
+  // 🔹 Guardar en Firebase solo si es contratista
   if(currentUserRole === "contratista"){
     saveToStorage();
-  } else if(currentUserRole === "subcontratista" && companyData[currentCompany].addedByUid){
-    const contratistaUid = companyData[currentCompany].addedByUid;
-    db.ref(`users/${contratistaUid}/companies/${contratistaUid}/calendar/${currentDate}`)
-      .set(companyData[currentCompany].calendar[currentDate])
-      .catch(err=>console.warn("No se pudo sincronizar con contratista:", err));
   }
 
   renderCalendar();
