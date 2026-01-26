@@ -365,6 +365,12 @@ function saveToStorage(){
     return;
   }
 
+  // 🔴 BLOQUEO CLAVE: impedir que el subcontratista sobrescriba la empresa
+  if((currentUserRole || "").toLowerCase() === "subcontratista") {
+    console.warn("saveToStorage bloqueado: usuario subcontratista");
+    return;
+  }
+
   db.ref(`users/${currentUser.uid}/companies/${currentCompany}`)
     .set(companyData[currentCompany])
     .then(() => {
@@ -375,6 +381,7 @@ function saveToStorage(){
       alert("Error guardando datos en la nube: " + err.message);
     });
 }
+
 
 
 // Cargar todas las empresas del usuario actual
