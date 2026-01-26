@@ -569,7 +569,11 @@ function openCompany(name){
   if((currentUserRole || "").toLowerCase() === "subcontratista" && companyData[currentCompany].addedByUid){
     window.readOnlyMode = true;
     const contratistaUid = companyData[currentCompany].addedByUid;
-    const companyKey = companyData[currentCompany].addedByCompanyKey || contratistaUid;
+    const companyKey = companyData[currentCompany].addedByCompanyKey;
+    if(!companyKey){
+      alert("Error: no se ha encontrado la empresa del contratista");
+        return;
+    }
 
     // Cargar calendario del contratista
     db.ref(`users/${contratistaUid}/companies/${companyKey}/calendar`).once('value')
