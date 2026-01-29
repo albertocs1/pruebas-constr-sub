@@ -430,7 +430,6 @@ function showMenu() {
   });
 }
 
-
 function addCompany(){
   if(!currentUser) return alert("Usuario no autenticado");
 
@@ -441,56 +440,75 @@ function addCompany(){
     return;
   }
 
-  // Crear nueva empresa localmente
-  companyData[name] = { calendar: {}, templates: [] };
-  document.getElementById('newCompanyName').value = '';
+  // 🔹 Creamos la nueva empresa con ownerUid y subcontractorUid
+  companyData[name] = {
+    calendar: {},
+    templates: [],
+    ownerUid: currentUser.uid,      // quién creó la empresa
+    subcontractorUid: null          // por defecto no hay subcontratista
+  };
 
+  document.getElementById('newCompanyName').value = '';
   currentCompany = name;
 
   // Guardar en Firebase
   saveToStorage();
 
-  // 🔹 Actualizar la lista inmediatamente, sin esperar a Firebase
+  // Actualizar la lista inmediatamente
   renderCompanyList();
 }
 
-function addSubcontractorAsCompany() {
-  const subUid = document.getElementById('subcontractorSelect').value;
-  if (!subUid) return alert("Seleccione un subcontratista");
+function addSubcontractorToCompany() {
+  if(!currentCompany || !currentUser) return alert("Seleccione una empresa primero");
 
-  if (companyData[subUid]) {
-    return alert("Este subcontratista ya está en su lista de empresas");
+  const subUid = document.getElementById('subcontractorSelect').value;
+  if(!subUid) return alert("Seleccione un subcontratista");
+
+  // 🔹 Comprobar si ya hay un subcontratista
+  if(companyData[currentCompany].subcontractorUid) {
+    return alert("Esta empresa ya tiene un subcontratista asignado");
   }
 
+  // 🔹 Leer info del subcontratista
   db.ref(`users/${subUid}/info`).once('value')
     .then(snapshot => {
       const subInfo = snapshot.val();
-      if (!subInfo) return alert("No se pudo obtener info del subcontratista");
+      if(!subInfo) return alert("No se pudo obtener info del subcontratista");
 
-      const companyForSub = {
-        displayName: subInfo.email,
-        calendar: {},
-        templates: [],
+      // 🔹 Actualizar la empresa con subcontratista
+      companyData[currentCompany].subcontractorUid = subUid;
+      companyData[currentCompany].addedByUid = currentUser.uid;
+      companyData[currentCompany].addedByEmail = currentUser.email;
+
+      // 🔹 Guardar la empresa en Firebase (para el contratista)
+      saveToStorage();
+
+      // 🔹 Crear entrada en el usuario subcontratista para que vea la empresa
+      const subCompanyData = {
+        displayName: currentCompany,          // nombre de la empresa
+        calendar: companyData[currentCompany].calendar,  // mismo calendario
+        templates: companyData[currentCompany].templates,
+        ownerUid: currentUser.uid,
         addedByUid: currentUser.uid,
-        addedByCompanyKey: currentCompany, // obligatorio
-        addedBy: currentUser.email         // opcional, para mostrar quién lo añadió
+        addedByEmail: currentUser.email
       };
 
-      companyData[subUid] = companyForSub;
-
-      db.ref(`users/${subUid}/companies/${currentUser.uid}`).set(companyForSub)
+      db.ref(`users/${subUid}/companies/${currentCompany}`).set(subCompanyData)
         .then(() => {
-          console.log("Subcontratista actualizado correctamente con todas las propiedades");
-          alert(`Subcontratista ${subInfo.email} añadido correctamente`);
+          alert(`Subcontratista ${subInfo.email} vinculado correctamente`);
           renderCompanyList();
+
+          // 🔹 Eliminar de dropdown
           const select = document.getElementById('subcontractorSelect');
           const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
-          if (optionToRemove) optionToRemove.remove();
+          if(optionToRemove) optionToRemove.remove();
         })
-        .catch(err => alert("Error actualizando subcontratista: " + err.message));
+        .catch(err => alert("Error vinculando subcontratista: " + err.message));
+
     })
     .catch(err => alert("Error leyendo subcontratista: " + err.message));
 }
+
 
 function loadSubcontractorsDropdown() {
   if ((currentUserRole || "").trim().toLowerCase() !== "contratista") return;
@@ -540,7 +558,7 @@ function renderCompanyList(){
 
     const companyName = companyData[c].displayName || c;
     // Si existe addedBy, mostrar aviso
-    const addedBy = companyData[c].addedBy ? ` (Añadido por ${companyData[c].addedBy})` : '';
+    const addedBy = companyData[c].addedByEmail ? ` (Añadido por ${companyData[c].addedByEmail})` : '';
     div.textContent = companyName + addedBy;
 
     div.onclick = () => openCompany(c);
@@ -565,20 +583,16 @@ function openCompany(name){
   // Por defecto, permitimos edición
   window.readOnlyMode = false;
 
-  // 🔹 Si el usuario es subcontratista y esta empresa fue añadida por un contratista
+  // 🔹 Subcontratista
   if((currentUserRole || "").toLowerCase() === "subcontratista" && companyData[currentCompany].addedByUid){
-    window.readOnlyMode = true;
-    const contratistaUid = companyData[currentCompany].addedByUid;
-    const companyKey = companyData[currentCompany].addedByCompanyKey;
-    if(!companyKey){
-      alert("Error: no se ha encontrado la empresa del contratista");
-        return;
-    }
 
-    // Cargar calendario del contratista
-    db.ref(`users/${contratistaUid}/companies/${companyKey}/calendar`).once('value')
+    const ownerUid = companyData[currentCompany].addedByUid;
+
+    // Cargar calendario del propietario (contratista)
+    db.ref(`users/${ownerUid}/companies/${currentCompany}/calendar`).once('value')
       .then(snapshot => {
         companyData[currentCompany].calendar = snapshot.val() || {};
+        window.readOnlyMode = false; // permite edición si quieres que subcontratista modifique
         renderCalendar();
       })
       .catch(err => {
