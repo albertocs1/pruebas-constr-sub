@@ -235,10 +235,11 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
   
   <div id="companyList"></div>
   <!-- Añadir empresa nueva -->
-  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+  <div style="margin-top:10px;">
     <input type="text" id="newCompanyName" placeholder="Nueva empresa">
-    <button onclick="addCompany()" class="back-btn">Añadir</button>
+    <button onclick="promptLinkSubcontractor()" class="back-btn">Añadir</button>
   </div>
+
   <!-- Añadir Subcontratista -->
   <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
   <select id="subcontractorSelect">
@@ -430,33 +431,55 @@ function showMenu() {
   });
 }
 
-function addCompany(){
-  if(!currentUser) return alert("Usuario no autenticado");
-
+function promptLinkSubcontractor() {
   const name = document.getElementById('newCompanyName').value.trim();
-  if(!name) return;
-  if(companyData[name]) {
-    alert('Ya existe esa empresa');
-    return;
-  }
+  if(!name) return alert("Ingrese el nombre de la empresa");
+  if(companyData[name]) return alert("Ya existe esa empresa");
 
-  // 🔹 Creamos la nueva empresa con ownerUid y subcontractorUid
+  // Preguntar si queremos vincular a un subcontratista
+  const wantsSubcontractor = confirm("¿Desea vincular esta empresa a un subcontratista ahora?");
+
+  // Creamos la empresa base
   companyData[name] = {
     calendar: {},
     templates: [],
-    ownerUid: currentUser.uid,      // quién creó la empresa
-    subcontractorUid: null          // por defecto no hay subcontratista
+    ownerUid: currentUser.uid,
+    subcontractorUid: null
   };
 
-  document.getElementById('newCompanyName').value = '';
   currentCompany = name;
 
-  // Guardar en Firebase
-  saveToStorage();
+  if(wantsSubcontractor){
+    // Abrir dropdown de subcontratistas para elegir
+    const subUid = promptSubcontractorSelection();
+    if(subUid){
+      companyData[name].subcontractorUid = subUid;
+      // Guardar la info en Firebase para el contratista
+      saveToStorage();
 
-  // Actualizar la lista inmediatamente
+      // También crear entrada para el subcontratista
+      const subCompanyData = {
+        displayName: name,
+        calendar: companyData[name].calendar,
+        templates: companyData[name].templates,
+        ownerUid: currentUser.uid,
+        addedByUid: currentUser.uid,
+        addedByEmail: currentUser.email
+      };
+
+      db.ref(`users/${subUid}/companies/${name}`).set(subCompanyData)
+        .then(()=>alert("Subcontratista vinculado correctamente"))
+        .catch(err => alert("Error vinculando subcontratista: "+err.message));
+    }
+  } else {
+    // Guardar solo la empresa sin subcontratista
+    saveToStorage();
+  }
+
+  document.getElementById('newCompanyName').value = '';
   renderCompanyList();
 }
+
 
 function addSubcontractorToCompany() {
   if(!currentCompany || !currentUser) return alert("Seleccione una empresa primero");
