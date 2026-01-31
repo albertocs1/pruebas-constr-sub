@@ -661,6 +661,8 @@ function renderCalendar(){
     if(dayData && dayData.length > 0){
       const preview = document.createElement('div');
       preview.className = 'worker-preview-container';
+      preview.style.marginTop = '22px'; // ← añade esto para separar del número del día y el "+"
+
       dayData.forEach(w => {
         const p = document.createElement('div');
 
