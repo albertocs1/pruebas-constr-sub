@@ -582,21 +582,75 @@ function loadSubcontractorsDropdown() {
     .catch(err => console.error("Error cargando subcontratistas:", err));
 }
 
-
-
 function renderCompanyList(){
+  const isContractor = currentUserRole === 'contratista';
   const container = document.getElementById('companyList');
   container.innerHTML = '';
+
+  // ============================
+  // 🔴 PASO 4: BOTÓN AÑADIR EMPRESA (solo contratista)
+  // ============================
+  if (isContractor) {
+    const addBtn = document.createElement('div');
+    addBtn.className = 'company-item add-company-btn';
+    addBtn.textContent = '➕ Añadir empresa';
+
+    addBtn.onclick = () => {
+      openAddCompanyModal();
+    };
+
+    container.appendChild(addBtn);
+  }
+
+  // ============================
+  // 🟢 LISTA DE EMPRESAS ANTIGUAS (NO TOCAR)
+  // ============================
   Object.keys(companyData).sort().forEach(c => {
     const div = document.createElement('div');
     div.className = 'company-item';
-    // 🔹 Si tiene displayName, mostrarlo; si no, mostrar la clave
     div.textContent = companyData[c].displayName || c;
     div.onclick = () => openCompany(c);
     container.appendChild(div);
   });
+
+  // ============================
+  // 🔴 PASO 6: EMPRESAS COMPARTIDAS (solo contratista)
+  // ============================
+  if (isContractor) {
+    Object.entries(sharedCompanies).forEach(([companyId, company]) => {
+      const div = document.createElement('div');
+      div.className = 'company-item';
+      div.textContent = company.name;
+
+      div.onclick = () => {
+        currentCompany = companyId;
+        console.log('Empresa compartida seleccionada:', companyId);
+        // todavía NO abrimos calendario aquí
+      };
+
+      container.appendChild(div);
+    });
+  }
 }
 
+
+function openAddCompanyModal() {
+  const name = prompt('Nombre de la nueva empresa:');
+  if (!name) return;
+
+  // De momento solo creamos la empresa (sin vincular usuarios)
+  createSharedCompany(name, currentUser.uid)
+    .then(companyId => {
+      return linkCompanyToUser(currentUser.uid, companyId);
+    })
+    .then(() => {
+      loadSharedCompanies(() => {
+        renderCompanyList();
+      });
+    });
+}
+
+  
 function openCompany(name){
   currentCompany = name;
   if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
