@@ -1094,6 +1094,7 @@ auth.onAuthStateChanged(user => {
 
 if(user){
   currentUser = user;
+  loadSharedCompanies();
 
   // 🔹 Leer el rol del usuario desde Firebase
   db.ref(`users/${user.uid}/info/role`)
