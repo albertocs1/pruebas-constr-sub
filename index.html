@@ -426,8 +426,15 @@ function showMenu() {
   document.getElementById('selectedCompanyName').textContent = '';
 
   // 🔹 Mostrar email del usuario
+  // Mostrar siempre Nombre (email) registrado
+  db.ref(`users/${currentUser.uid}/info`).once('value').then(snapshot => {
+  const info = snapshot.val() || {};
+  const name = info.name || "Usuario";
+  const email = info.email || "";
   document.getElementById('currentUserEmail').textContent =
-  "Conectado como: " + getUserDisplayName(currentUser.uid);
+    `Conectado como: ${name} (${email})`;
+  });
+
 
   db.ref('users').once('value').then(snapshot => {
     const users = snapshot.val() || {};
