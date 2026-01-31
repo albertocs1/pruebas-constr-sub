@@ -459,20 +459,20 @@ function addCompany() {
             const subUid = selected[0];
 
       // 🔹 Agregar owner en empresa (contratista y subcontratista)
-newCompany.owners[subUid] = true; // 🔹 aquí agregamos al subcontratista como owner
+      newCompany.owners[subUid] = true; // 🔹 aquí agregamos al subcontratista como owner
 
-// 🔹 Guardar empresa completa en nodo del contratista
-db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany);
+      // 🔹 Guardar empresa completa en nodo del contratista
+      db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany);
 
-// 🔹 Guardar empresa completa en nodo del subcontratista
-db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
-  .then(() => {
-    alert("Subcontratista vinculado correctamente");
-  })
-  .catch(err => {
-    console.error("Error vinculando subcontratista:", err);
-    alert("Error vinculando subcontratista: " + err.message);
-  });
+      // 🔹 Guardar empresa completa en nodo del subcontratista
+      db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
+      .then(() => {
+        alert("Subcontratista vinculado correctamente");
+      })
+      .catch(err => {
+        console.error("Error vinculando subcontratista:", err);
+        alert("Error vinculando subcontratista: " + err.message);
+      });
 
 
 
