@@ -704,60 +704,63 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
   modalContent.innerHTML = `
     <h2>${entry ? 'Editar Trabajador' : 'Registrar Trabajadores'} - ${formatDate(date)}</h2>
     <div id="quickForm">
-      <label>Trabajador frecuente:<select id="quickWorkerTemplate"></select></label>
-      <div id="frequentWorkerButtons" style="margin-top:4px;"></div>
-      <label>Nombre trabajador:<input type="text" id="quickWorkerName"></label>
-      <label>Rango:<input type="text" id="quickWorkerRank"></label>
+      <label>Nombre trabajador frecuente:</label>
+      <input type="text" id="quickWorkerName">
+      <input type="text" id="quickWorkerRank" placeholder="Rango">
+      <div id="frequentWorkerList" style="margin:6px 0;"></div>
+
       <div id="workEntries"></div>
       <button type="button" class="add-work-btn" onclick="addWorkEntry()">+ Añadir trabajo</button>
       <label>Horas Totales:<input type="number" id="totalHours" readonly></label>
-      <div style="margin-top:12px;"><button class="back-btn" onclick="saveEntry(${entryIndex !== null ? entryIndex : 'null'})">${entry ? 'Actualizar' : 'Guardar'}</button></div>
+      <div style="margin-top:12px;">
+        <button class="back-btn" onclick="saveEntry(${entryIndex !== null ? entryIndex : 'null'})">${entry ? 'Actualizar' : 'Guardar'}</button>
+      </div>
     </div>
   `;
 
-  const quickTemplate = document.getElementById('quickWorkerTemplate');
-  quickTemplate.innerHTML = '<option value=""></option>';
-  const buttonsContainer = document.getElementById('frequentWorkerButtons');
-  buttonsContainer.innerHTML = '';
+  const frequentList = document.getElementById('frequentWorkerList');
+  frequentList.innerHTML = '';
 
+  // Mostrar los trabajadores frecuentes como lista con botón de eliminar
   if(companyData[currentCompany] && companyData[currentCompany].templates){
     companyData[currentCompany].templates.forEach((t, index) => {
-      const opt = document.createElement('option');
-      opt.value = t.name;
-      opt.textContent = `${t.name} (${t.rank})`;
-      quickTemplate.appendChild(opt);
+      const container = document.createElement('div');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.marginBottom = '4px';
 
-      // Botón eliminar plantilla
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = `${t.name} (${t.rank})`;
+      nameSpan.style.flex = '1';
+      nameSpan.style.cursor = 'pointer';
+      nameSpan.onclick = () => {
+        document.getElementById('quickWorkerName').value = t.name;
+        document.getElementById('quickWorkerRank').value = t.rank;
+      };
+
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.textContent = '🗑️';
       removeBtn.title = 'Eliminar de trabajadores frecuentes';
-      removeBtn.style.marginRight = '4px';
       removeBtn.onclick = (ev) => {
         ev.stopPropagation();
         if(confirm(`Eliminar "${t.name}" de trabajadores frecuentes? Esto no borrará registros previos.`)){
           companyData[currentCompany].templates.splice(index, 1); // elimina solo de templates
-          saveToStorage(); // sincroniza cambios para todos los owners
-          openModal(currentDate); // recarga modal para actualizar la UI
+          saveToStorage();
+          openModal(currentDate, readonly, entry, entryIndex); // recarga modal
         }
       };
 
-      buttonsContainer.appendChild(removeBtn);
+      container.appendChild(nameSpan);
+      container.appendChild(removeBtn);
+      frequentList.appendChild(container);
     });
   }
 
-  quickTemplate.onchange = () => {
-    const t = (companyData[currentCompany].templates || []).find(x => x.name === quickTemplate.value);
-    if(t){
-      document.getElementById('quickWorkerName').value = t.name;
-      document.getElementById('quickWorkerRank').value = t.rank;
-    }
-  };
-
+  // Rellenar campos si estamos editando un entry
   document.getElementById('quickWorkerName').value = entry ? entry.name : '';
   document.getElementById('quickWorkerRank').value = entry ? entry.rank : '';
   document.getElementById('workEntries').innerHTML = '';
-
   if(entry){
     entry.works.forEach(w => addWorkEntry(w.work, w.hours));
   } else {
@@ -766,6 +769,7 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
 
   updateTotalHours();
 }
+
 
 function closeModal(){ document.getElementById('calendarModal').style.display = 'none'; }
 
