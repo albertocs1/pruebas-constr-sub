@@ -410,7 +410,6 @@ function showMenu() {
   .once('value')
   .then(snapshot => {
     currentUserRole = (snapshot.val() || "").trim().toLowerCase();
-    loadSubcontractorsDropdown();
   });
   });
 }
@@ -438,82 +437,6 @@ function addCompany(){
   // 🔹 Actualizar la lista inmediatamente, sin esperar a Firebase
   renderCompanyList();
 }
-
-function addSubcontractorAsCompany() {
-  const subUid = document.getElementById('subcontractorSelect').value;
-  if (!subUid) return alert("Seleccione un subcontratista");
-
-  if (companyData[subUid]) {
-    return alert("Este subcontratista ya está en su lista de empresas");
-  }
-
-  // 🔹 Obtener info del subcontratista desde Firebase
-  db.ref(`users/${subUid}/info`).once('value')
-    .then(snapshot => {
-      const subInfo = snapshot.val();
-      if (!subInfo) return alert("No se pudo obtener info del subcontratista");
-
-      // 🔹 Creamos la “empresa” usando el UID, mostrando su email
-      companyData[subUid] = {
-        displayName: subInfo.email,
-        calendar: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].calendar || {} : {},
-        templates: subInfo.companies && subInfo.companies[subUid] ? subInfo.companies[subUid].templates || [] : []
-      };
-
-      // 🔹 Guardamos cambios en Firebase bajo el Contratista actual
-      saveToStorage();
-
-      // 🔹 Actualizar lista de empresas
-      renderCompanyList();
-
-      // 🔹 Quitar este subcontratista del dropdown para no duplicar
-      const select = document.getElementById('subcontractorSelect');
-      const optionToRemove = select.querySelector(`option[value="${subUid}"]`);
-      if (optionToRemove) optionToRemove.remove();
-
-      alert(`Subcontratista ${subInfo.email} añadido como empresa correctamente`);
-    })
-    .catch(err => alert("Error leyendo subcontratista: " + err.message));
-}
-
-function loadSubcontractorsDropdown() {
-  if ((currentUserRole || "").trim().toLowerCase() !== "contratista") return;
-
-
-  const select = document.getElementById('subcontractorSelect');
-  if (!select) return;
-
-  select.innerHTML = '<option value="">Seleccione Subcontratista</option>';
-
-  db.ref('users').once('value')
-    .then(snapshot => {
-      const users = snapshot.val() || {};
-      let hasSubcontractors = false;
-
-      Object.entries(users).forEach(([uid, userData]) => {
-        const role = (userData.info?.role || "").trim().toLowerCase();
-
-        if (role === "subcontratista") {
-          if (!companyData[uid]) {
-            const opt = document.createElement('option');
-            opt.value = uid;
-            opt.textContent = userData.info.email;
-            select.appendChild(opt);
-            hasSubcontractors = true;
-          }
-        }
-      });
-
-      if (!hasSubcontractors) {
-        const opt = document.createElement('option');
-        opt.textContent = "No hay subcontratistas registrados";
-        select.appendChild(opt);
-      }
-    })
-    .catch(err => console.error("Error cargando subcontratistas:", err));
-}
-
-
 
 function renderCompanyList(){
   const container = document.getElementById('companyList');
@@ -767,14 +690,6 @@ function saveEntry(entryIndex = null){
 
   // 🔹 Guardar cambios en el Contratista
   saveToStorage();
-
-  // 🔹 Si la “empresa” es un subcontratista real, actualizar también su calendario
-  if(currentCompany && currentCompany.startsWith("sub")){ // mejor: validar con role en Firebase
-    db.ref(`users/${currentCompany}/companies/${currentCompany}/calendar/${currentDate}`)
-      .set(companyData[currentCompany].calendar[currentDate])
-      .catch(err=>console.warn("No se pudo sincronizar con subcontratista:", err));
-  }
-
   renderCalendar();
   closeModal();
 }
