@@ -637,10 +637,22 @@ function renderCalendar(){
       preview.className = 'worker-preview-container';
       finalDayData.forEach(w => {
         const p = document.createElement('div');
-        p.textContent = `${w.name} (${w.total}h)`;
+
+        // ✔ Tick azul si está validado
+        const isValidated = w.validatedBy && w.validatedBy.length > 0;
+        const tick = isValidated ? ' ✔' : '';
+
+        p.textContent = `${w.name} (${w.total}h)${tick}`;
         p.style.fontSize = '0.9rem';
+
+        if (isValidated) {
+          p.style.color = '#2563eb'; // azul
+          p.style.fontWeight = '600';
+        }
+
         preview.appendChild(p);
       });
+
       div.appendChild(preview);
     }
 
