@@ -623,8 +623,7 @@ function renderCalendar(){
   document.getElementById('calendarTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
 
   const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
-  let firstDay = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7; // hacer Lun=0
-  // relleno de celdas vacías hasta el primer día
+  let firstDay = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7; // Lun=0
   for(let i=0;i<firstDay;i++){
     const empty = document.createElement('div');
     empty.className = 'day';
@@ -637,7 +636,6 @@ function renderCalendar(){
 
   for(let day=1; day<=daysInMonth; day++){
     const dateObj = new Date(currentYear, currentMonth, day);
-    // <-- FIX: dateKey siempre en formato 'YYYY-MM-DD'
     const dateKey = `${currentYear}-${pad(currentMonth+1)}-${pad(day)}`;
     const div = document.createElement('div');
     div.className = 'day';
@@ -660,13 +658,9 @@ function renderCalendar(){
 
     const dayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
 
-    // Compatibilidad: si la data está almacenada con claves sin padding,
-    // buscamos también con la versión sin pad (por compatibilidad retroactiva)
     if(!dayData && companyData[currentCompany] && companyData[currentCompany].calendar){
-      // buscar posibles claves que coincidan con el mismo día pero distinto formato
-      const altKey1 = `${currentYear}-${currentMonth+1}-${day}`; // e.g. 2025-11-1
+      const altKey1 = `${currentYear}-${currentMonth+1}-${day}`;
       if(companyData[currentCompany].calendar[altKey1]) {
-        // normalizamos migrando la clave al formato pad (opcional)
         companyData[currentCompany].calendar[dateKey] = companyData[currentCompany].calendar[altKey1];
         delete companyData[currentCompany].calendar[altKey1];
       }
@@ -680,15 +674,24 @@ function renderCalendar(){
       finalDayData.forEach(w => {
         const p = document.createElement('div');
 
-        // ✔ Tick azul si está validado
         const isValidated = w.validatedBy && w.validatedBy.length > 0;
         const tick = isValidated ? ' ✔' : '';
 
-        p.textContent = `${w.name} (${w.total}h)${tick}`;
+        // Icono ⚠️ si no lo añadió el usuario actual
+        const ownerIcon = w.owner !== currentUser.uid ? ' ⚠️' : '';
+
+        p.textContent = `${w.name} (${w.total}h)${tick}${ownerIcon}`;
         p.style.fontSize = '0.9rem';
 
         if (isValidated) {
-          p.style.color = '#2563eb'; // azul
+          p.style.color = '#2563eb';
+          p.style.fontWeight = '600';
+        }
+
+        if(ownerIcon){
+          p.style.background = '#fef3c7';
+          p.style.padding = '2px 4px';
+          p.style.borderRadius = '4px';
           p.style.fontWeight = '600';
         }
 
@@ -698,10 +701,14 @@ function renderCalendar(){
       div.appendChild(preview);
     }
 
-    div.onclick = () => { if(companyData[currentCompany].calendar[dateKey]) showDaySummary(dateKey); else openModal(dateKey,false); };
+    div.onclick = () => { 
+      if(companyData[currentCompany].calendar[dateKey]) showDaySummary(dateKey); 
+      else openModal(dateKey,false); 
+    };
     calendarDiv.appendChild(div);
   }
 }
+
 
 // ==== Modal: abrir, añadir, editar ====
 function openModal(date, readonly=false, entry=null, entryIndex=null){
@@ -855,7 +862,16 @@ function showDaySummary(dateKey){
   entries.forEach((e, index) => {
     const workerDiv = document.createElement('div');
     workerDiv.style.marginBottom = '8px';
-    workerDiv.innerHTML = `<h3 style="margin:0 0 6px 0">${e.name} (${e.rank})</h3>`;
+
+    // ⚠️ Destacar si no lo añadió el usuario actual
+    const ownerIcon = e.owner !== currentUser.uid ? ' ⚠️' : '';
+    if(ownerIcon){
+      workerDiv.style.background = '#fef3c7';
+      workerDiv.style.padding = '8px';
+      workerDiv.style.borderRadius = '8px';
+    }
+
+    workerDiv.innerHTML = `<h3 style="margin:0 0 6px 0">${e.name} (${e.rank})${ownerIcon}</h3>`;
 
     // Mostrar trabajos
     e.works.forEach(w => {
@@ -869,7 +885,7 @@ function showDaySummary(dateKey){
     totalP.textContent = `Total Horas: ${e.total}`;
     workerDiv.appendChild(totalP);
 
-    // Mostrar quién validó
+    // Validaciones
     if(e.validatedBy && e.validatedBy.length > 0){
       const vDiv = document.createElement('div');
       vDiv.textContent = `Validado por: ${e.validatedBy
@@ -879,12 +895,10 @@ function showDaySummary(dateKey){
       workerDiv.appendChild(vDiv);
     }
 
-    // Botones según permisos y validaciones
     const isOwner = (e.owner === currentUser.uid);
     const hasValidation = e.validatedBy && e.validatedBy.length > 0;
     
     if(isOwner){
-      // ✅ Owner solo puede editar/eliminar si nadie ha validado
       if(!hasValidation){
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Editar';
@@ -903,7 +917,7 @@ function showDaySummary(dateKey){
               db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
                 .catch(err => console.error("Error guardando para owner", uid, err));
             });
-            showDaySummary(dateKey); // 🔹 refresca modal
+            showDaySummary(dateKey);
             renderCalendar();
           }
         };
@@ -911,9 +925,7 @@ function showDaySummary(dateKey){
         workerDiv.appendChild(editBtn);
         workerDiv.appendChild(deleteBtn);
       }
-      // Si ya hay validaciones, no mostramos ningún botón para el owner
     } else {
-      // ✅ Otros owners pueden validar si aún no lo han hecho
       const alreadyValidated = e.validatedBy && e.validatedBy.includes(currentUser.uid);
       const validateBtn = document.createElement('button');
       validateBtn.textContent = alreadyValidated ? 'Validado ✅' : 'Validar';
@@ -923,7 +935,7 @@ function showDaySummary(dateKey){
         if(!alreadyValidated){
           e.validatedBy.push(currentUser.uid);
           saveValidation(e, dateKey);
-          showDaySummary(dateKey); // 🔹 actualiza inmediatamente modal y botones
+          showDaySummary(dateKey);
           renderCalendar();
         }
       };
@@ -936,6 +948,7 @@ function showDaySummary(dateKey){
 
   document.getElementById('calendarModal').style.display = 'flex';
 }
+
 
 
 
