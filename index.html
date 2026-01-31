@@ -811,12 +811,23 @@ function showDaySummary(dateKey){
     deleteBtn.onclick = () => {
       if(confirm('Eliminar este registro?')){
         entries.splice(index,1);
-        if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
-        saveToStorage();
-        showDaySummary(dateKey);
-        renderCalendar();
-      }
-    };
+
+      // Si ya no hay registros en el día, eliminamos la clave
+      if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+
+      // 🔹 Guardar cambios para todos los owners
+      const owners = companyData[currentCompany].owners || {};
+      Object.keys(owners).forEach(uid => {
+        db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
+          .catch(err => console.error("Error guardando para owner", uid, err));
+      });
+
+    // 🔹 Actualizar UI
+    showDaySummary(dateKey);
+    renderCalendar();
+  }
+};
+
 
     workerDiv.appendChild(editBtn);
     workerDiv.appendChild(deleteBtn);
