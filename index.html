@@ -570,19 +570,20 @@ function renderCompanyList() {
   container.innerHTML = '';
 
   // 🔹 Botón Añadir empresa solo para contratista
-  if (currentUserRole === 'contratista') {
-    const addBtn = document.createElement('button');
+if (currentUserRole === 'contratista') {
+    const addBtn = document.createElement('div');
     addBtn.textContent = '➕ Añadir empresa';
-    addBtn.className = 'back-btn';
-    addBtn.style.width = '100%';
-    addBtn.style.marginBottom = '12px';
+    addBtn.style.cursor = 'pointer';
+    addBtn.style.padding = '8px';
+    addBtn.style.border = '1px solid #ccc';
+    addBtn.style.marginBottom = '10px';
+    addBtn.style.background = '#eef';
     addBtn.onclick = () => {
-      const name = prompt('Nombre de la nueva empresa:');
-      if (!name) return;
-      addCompany(name);
+        openAddCompanyModal();
     };
     container.appendChild(addBtn);
-  }
+}
+
 
   // 🔹 Listado de empresas
   Object.entries(companyData).forEach(([key, comp]) => {
