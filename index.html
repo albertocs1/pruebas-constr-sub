@@ -582,18 +582,32 @@ function loadSubcontractorsDropdown() {
     .catch(err => console.error("Error cargando subcontratistas:", err));
 }
 
-function renderCompanyList(){
-  const isContractor = currentUserRole === 'contratista';
+function renderCompanyList() {
   const container = document.getElementById('companyList');
+
+  if (!container) {
+    console.error('No existe el contenedor #companyList');
+    return;
+  }
+
   container.innerHTML = '';
 
-  // ============================
-  // 🔴 PASO 4: BOTÓN AÑADIR EMPRESA (solo contratista)
-  // ============================
-  if (isContractor) {
+  // ===== TÍTULO (solo para comprobar que se pinta bien) =====
+  const title = document.createElement('div');
+  title.textContent = 'MENÚ DE EMPRESAS';
+  title.style.fontWeight = 'bold';
+  title.style.marginBottom = '10px';
+  container.appendChild(title);
+
+  // ===== BOTÓN AÑADIR EMPRESA (solo contratista) =====
+  if (currentUserRole === 'contratista') {
     const addBtn = document.createElement('div');
-    addBtn.className = 'company-item add-company-btn';
     addBtn.textContent = '➕ Añadir empresa';
+    addBtn.style.cursor = 'pointer';
+    addBtn.style.padding = '8px';
+    addBtn.style.border = '1px solid #ccc';
+    addBtn.style.marginBottom = '10px';
+    addBtn.style.background = '#eef';
 
     addBtn.onclick = () => {
       openAddCompanyModal();
@@ -602,36 +616,13 @@ function renderCompanyList(){
     container.appendChild(addBtn);
   }
 
-  // ============================
-  // 🟢 LISTA DE EMPRESAS ANTIGUAS (NO TOCAR)
-  // ============================
-  Object.keys(companyData).sort().forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'company-item';
-    div.textContent = companyData[c].displayName || c;
-    div.onclick = () => openCompany(c);
-    container.appendChild(div);
-  });
-
-  // ============================
-  // 🔴 PASO 6: EMPRESAS COMPARTIDAS (solo contratista)
-  // ============================
-  if (isContractor) {
-    Object.entries(sharedCompanies).forEach(([companyId, company]) => {
-      const div = document.createElement('div');
-      div.className = 'company-item';
-      div.textContent = company.name;
-
-      div.onclick = () => {
-        currentCompany = companyId;
-        console.log('Empresa compartida seleccionada:', companyId);
-        // todavía NO abrimos calendario aquí
-      };
-
-      container.appendChild(div);
-    });
-  }
+  // ===== MENSAJE TEMPORAL =====
+  const info = document.createElement('div');
+  info.textContent = 'Aquí se listarán las empresas...';
+  info.style.opacity = '0.7';
+  container.appendChild(info);
 }
+
 
 
 function openAddCompanyModal() {
