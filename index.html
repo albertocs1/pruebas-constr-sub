@@ -415,62 +415,73 @@ function showMenu() {
 }
 
 function addCompany() {
-  if(!currentUser) return alert("Usuario no autenticado");
+  if (!currentUser) return alert("Usuario no autenticado");
 
   const name = document.getElementById('newCompanyName').value.trim();
-  if(!name) return alert("Ingrese el nombre de la empresa");
-  if(companyData[name]) return alert('Ya existe esa empresa');
-
-  // Preguntar si se quiere vincular a un subcontratista
-  const wantsLink = confirm("¿Desea vincular esta empresa a un usuario subcontratista existente?");
-  if(wantsLink){
-    // Buscar todos los usuarios con rol subcontratista
-    db.ref('users').once('value').then(snapshot => {
-      const allUsers = snapshot.val() || {};
-      const subcontractors = [];
-      for(const uid in allUsers){
-        if(allUsers[uid].info && allUsers[uid].info.role === "Subcontratista"){
-          subcontractors.push({uid, email: allUsers[uid].info.email});
-        }
-      }
-
-      if(subcontractors.length === 0) {
-        alert("No hay subcontratistas registrados");
-        createCompany(name, null);
-        return;
-      }
-
-      // Crear select para elegir subcontratista
-      let sel = "Seleccione subcontratista:\n";
-      subcontractors.forEach((s, i) => sel += `${i+1}. ${s.email}\n`);
-      let choice = prompt(sel, "1");
-      if(choice === null) { 
-        // Canceló
-        createCompany(name, null);
-        return;
-      }
-
-      choice = parseInt(choice) - 1;
-      if(isNaN(choice) || choice < 0 || choice >= subcontractors.length){
-        alert("Selección inválida, se crea sin vincular subcontratista");
-        createCompany(name, null);
-        return;
-      }
-
-      const selectedSub = subcontractors[choice];
-      createCompany(name, selectedSub.uid);
-
-    }).catch(err => {
-      console.error("Error cargando subcontratistas:", err);
-      alert("No se pudieron cargar subcontratistas, la empresa se creará sin vincular");
-      createCompany(name, null);
-    });
-
-  } else {
-    // No vincular, solo crear
-    createCompany(name, null);
+  if (!name) return;
+  if (Object.values(companyData).some(c => c.name === name)) {
+    alert('Ya existe esa empresa');
+    return;
   }
+
+  // 🔹 Generar un ID único para la empresa
+  const empresaId = 'empresa_' + Date.now(); // sencillo y único
+
+  // 🔹 Crear empresa en nodo del contratista
+  const newCompany = {
+    name: name,
+    calendar: {},
+    templates: [],
+    owners: {}
+  };
+  newCompany.owners[currentUser.uid] = true; // contratista como owner
+
+  db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany)
+    .then(() => {
+      console.log("Empresa creada correctamente:", name);
+
+      // 🔹 Preguntar si se quiere vincular con un subcontratista
+      if (confirm("¿Quieres vincular esta empresa con un subcontratista existente?")) {
+        // 🔹 Cargar subcontratistas registrados
+        db.ref('users').once('value').then(snapshot => {
+          const users = snapshot.val() || {};
+          const subUsers = Object.entries(users)
+            .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
+
+          if (subUsers.length === 0) return alert("No hay subcontratistas registrados");
+
+          // 🔹 Selección mediante prompt sencillo
+          const names = subUsers.map(([uid, u]) => `${u.info.email} (${uid})`).join("\n");
+          const sel = prompt("Subcontratistas registrados:\n" + names + "\n\nEscribe el UID del subcontratista a vincular:");
+
+          const selected = subUsers.find(([uid, u]) => uid === sel.trim());
+          if (selected) {
+            const subUid = selected[0];
+
+            // 🔹 Agregar owner en empresa
+            db.ref(`users/${currentUser.uid}/companies/${empresaId}/owners/${subUid}`).set(true);
+
+            // 🔹 Agregar referencia en nodo del subcontratista
+            db.ref(`users/${subUid}/companies/${empresaId}`).set(true);
+
+            alert("Subcontratista vinculado correctamente");
+          } else {
+            alert("UID no válido o cancelado");
+          }
+        });
+      }
+
+      // 🔹 Actualizar companyData local y lista
+      companyData[empresaId] = newCompany;
+      document.getElementById('newCompanyName').value = '';
+      renderCompanyList();
+    })
+    .catch(err => {
+      console.error("Error creando empresa:", err);
+      alert("Error creando empresa: " + err.message);
+    });
 }
+
 
 function createCompany(name, subcontractorUid){
   // Crear empresa localmente
@@ -493,18 +504,24 @@ function createCompany(name, subcontractorUid){
 }
 
 
-function renderCompanyList(){
+function renderCompanyList() {
   const container = document.getElementById('companyList');
   container.innerHTML = '';
-  Object.keys(companyData).sort().forEach(c => {
+
+  // 🔹 Recorremos todas las empresas del usuario
+  Object.entries(companyData).forEach(([empresaId, company]) => {
+
+    // 🔹 Mostrar solo si es owner (para contratistas y subcontratistas)
+    if (!company.owners || !company.owners[currentUser.uid]) return;
+
     const div = document.createElement('div');
     div.className = 'company-item';
-    // 🔹 Si tiene displayName, mostrarlo; si no, mostrar la clave
-    div.textContent = companyData[c].displayName || c;
-    div.onclick = () => openCompany(c);
+    div.textContent = company.name || empresaId;
+    div.onclick = () => openCompany(empresaId);
     container.appendChild(div);
   });
 }
+
 
 function openCompany(name){
   currentCompany = name;
