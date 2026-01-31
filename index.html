@@ -473,25 +473,29 @@ function showMenu() {
   });
 }
 
-function addCompany() {
+ffunction addCompany() {
   if (!currentUser) return alert("Usuario no autenticado");
 
-  const name = document.getElementById('newCompanyName').value.trim();
+  // 🔹 Tomamos el valor del input
+  const input = document.getElementById('newCompanyName');
+  const name = input.value.trim();
   if (!name) return alert("Ingrese un nombre para la empresa");
 
-  document.getElementById('newCompanyName').value = '';
+  // 🔹 Limpiamos el input
+  input.value = '';
 
+  // 🔹 Crear empresa en Firebase
   createSharedCompany(name, currentUser.uid)
     .then(companyId => {
-      // Vincular al usuario
-      return linkCompanyToUser(currentUser.uid, companyId).then(() => companyId);
+      // 🔹 Vincularla al usuario actual
+      return linkCompanyToUser(currentUser.uid, companyId)
+        .then(() => companyId);
     })
     .then(companyId => {
-      // 🔹 Actualizar sharedCompanies y companyData manualmente
-      sharedCompanies[companyId] = { name: name, owner: currentUser.uid, linkedUsers: { [currentUser.uid]: 'contratista' } };
-      companyData[companyId] = { calendar: {}, templates: [] };
-
-      renderCompanyList(); // ✅ Renderizar inmediatamente
+      // 🔹 Recargar sharedCompanies y renderizar lista
+      loadSharedCompanies(() => {
+        renderCompanyList();
+      });
     })
     .catch(err => {
       console.error("Error añadiendo empresa:", err);
