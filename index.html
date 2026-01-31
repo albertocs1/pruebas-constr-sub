@@ -350,23 +350,30 @@ let costByRank = {};
 let exportCallback = null;
   
 // ==== Firebase helpers ====
-// Guardar datos solo del usuario actual
+
 function saveToStorage(){
   if(!currentUser || !currentCompany) {
     console.warn("saveToStorage cancelado: usuario o empresa nulos");
     return;
   }
 
-  db.ref(`users/${currentUser.uid}/companies/${currentCompany}`)
-    .set(companyData[currentCompany])
+  const owners = companyData[currentCompany].owners || {};
+
+  const updates = {};
+  Object.keys(owners).forEach(uid => {
+    updates[`users/${uid}/companies/${currentCompany}`] = companyData[currentCompany];
+  });
+
+  db.ref().update(updates)
     .then(() => {
-      console.log("Datos guardados correctamente en Firebase");
+      console.log("Datos guardados correctamente en Firebase para todos los owners");
     })
     .catch(err => {
       console.error("ERROR guardando en Firebase:", err);
       alert("Error guardando datos en la nube: " + err.message);
     });
 }
+
 
 
 // Cargar todas las empresas del usuario actual
@@ -414,6 +421,7 @@ function showMenu() {
   });
 }
 
+
 function addCompany() {
   if (!currentUser) return alert("Usuario no autenticado");
 
@@ -425,9 +433,9 @@ function addCompany() {
   }
 
   // 🔹 Generar un ID único para la empresa
-  const empresaId = 'empresa_' + Date.now(); // sencillo y único
+  const empresaId = 'empresa_' + Date.now();
 
-  // 🔹 Crear empresa en nodo del contratista
+  // 🔹 Crear empresa en memoria
   const newCompany = {
     name: name,
     calendar: {},
@@ -436,81 +444,63 @@ function addCompany() {
   };
   newCompany.owners[currentUser.uid] = true; // contratista como owner
 
-  db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany)
-    .then(() => {
-      console.log("Empresa creada correctamente:", name);
+  // 🔹 Preguntar si se quiere vincular con un subcontratista
+  const linkSub = confirm("¿Quieres vincular esta empresa con un subcontratista existente?");
+  if (linkSub) {
+    db.ref('users').once('value').then(snapshot => {
+      const users = snapshot.val() || {};
+      const subUsers = Object.entries(users)
+        .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
 
-      // 🔹 Preguntar si se quiere vincular con un subcontratista
-      if (confirm("¿Quieres vincular esta empresa con un subcontratista existente?")) {
-        // 🔹 Cargar subcontratistas registrados
-        db.ref('users').once('value').then(snapshot => {
-          const users = snapshot.val() || {};
-          const subUsers = Object.entries(users)
-            .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
+      if (subUsers.length === 0) return alert("No hay subcontratistas registrados");
 
-          if (subUsers.length === 0) return alert("No hay subcontratistas registrados");
+      // Selección mediante prompt sencillo
+      const names = subUsers.map(([uid, u]) => `${u.info.email} (${uid})`).join("\n");
+      const sel = prompt("Subcontratistas registrados:\n" + names + "\n\nEscribe el UID del subcontratista a vincular:");
 
-          // 🔹 Selección mediante prompt sencillo
-          const names = subUsers.map(([uid, u]) => `${u.info.email} (${uid})`).join("\n");
-          const sel = prompt("Subcontratistas registrados:\n" + names + "\n\nEscribe el UID del subcontratista a vincular:");
-
-          const selected = subUsers.find(([uid, u]) => uid === sel.trim());
-          if (selected) {
-            const subUid = selected[0];
-
-      // 🔹 Agregar owner en empresa (contratista y subcontratista)
-      newCompany.owners[subUid] = true; // 🔹 aquí agregamos al subcontratista como owner
-
-      // 🔹 Guardar empresa completa en nodo del contratista
-      db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany);
-
-      // 🔹 Guardar empresa completa en nodo del subcontratista
-      db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
-      .then(() => {
-        alert("Subcontratista vinculado correctamente");
-      })
-      .catch(err => {
-        console.error("Error vinculando subcontratista:", err);
-        alert("Error vinculando subcontratista: " + err.message);
-      });
-
-
-
-          } else {
-            alert("UID no válido o cancelado");
-          }
-        });
+      const selected = subUsers.find(([uid]) => uid === sel.trim());
+      if (selected) {
+        const subUid = selected[0];
+        newCompany.owners[subUid] = true; // añadir subcontratista como owner
+      } else {
+        alert("UID no válido o cancelado. Se creará sin vincular subcontratista");
       }
 
-      // 🔹 Actualizar companyData local y lista
+      // 🔹 Guardar en Firebase para todos los owners
       companyData[empresaId] = newCompany;
       document.getElementById('newCompanyName').value = '';
+      saveToStorage(); // ✅ Propaga a todos los owners
       renderCompanyList();
-    })
-    .catch(err => {
-      console.error("Error creando empresa:", err);
-      alert("Error creando empresa: " + err.message);
     });
+  } else {
+    // 🔹 Guardar solo contratista
+    companyData[empresaId] = newCompany;
+    document.getElementById('newCompanyName').value = '';
+    saveToStorage(); // ✅ Propaga a todos los owners (solo contratista por ahora)
+    renderCompanyList();
+  }
 }
 
-
 function createCompany(name, subcontractorUid){
-  // Crear empresa localmente
-  companyData[name] = { calendar: {}, templates: [] };
-  document.getElementById('newCompanyName').value = '';
-  currentCompany = name;
+  // Crear empresa en memoria
+  const empresaId = 'empresa_' + Date.now();
+  const newCompany = {
+    name: name,
+    calendar: {},
+    templates: [],
+    owners: {}
+  };
+  newCompany.owners[currentUser.uid] = true; // contratista como owner
 
-  // Guardar en Firebase del usuario actual
-  saveToStorage();
-
-  // Si se vincula subcontratista, agregar referencia en Firebase
   if(subcontractorUid){
-    db.ref(`users/${subcontractorUid}/companies/${name}`).set(companyData[name])
-      .then(() => console.log("Empresa vinculada al subcontratista"))
-      .catch(err => console.error("Error vinculando subcontratista:", err));
+    newCompany.owners[subcontractorUid] = true;
   }
 
-  // Actualizar lista de empresas inmediatamente
+  // Guardar en memoria y Firebase para todos los owners
+  companyData[empresaId] = newCompany;
+  currentCompany = empresaId;
+  saveToStorage(); // ✅ sincroniza con todos los owners
+
   renderCompanyList();
 }
 
