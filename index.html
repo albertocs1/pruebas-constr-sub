@@ -351,6 +351,17 @@ let exportCallback = null;
   
 // ==== Firebase helpers ====
 
+// ==================== TRADUCTORES DE VISUALIZACIÓN ====================
+
+// Devuelve el nombre visible de una empresa a partir de su ID
+function getCompanyDisplayName(companyId){
+  if(!companyId) return '';
+  if(companyData[companyId] && companyData[companyId].name){
+    return companyData[companyId].name;
+  }
+  return companyId; // fallback por seguridad
+}
+
 function saveToStorage(){
   if(!currentUser || !currentCompany) {
     console.warn("saveToStorage cancelado: usuario o empresa nulos");
