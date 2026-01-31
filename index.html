@@ -745,6 +745,7 @@ function saveEntry(entryIndex = null){
   const rank = document.getElementById('quickWorkerRank').value.trim();
   if(!name) return alert("Ingrese nombre del trabajador");
 
+  // Obtener trabajos y horas
   const works = Array.from(document.querySelectorAll('.work-block')).map(b => ({
     work: b.querySelector('.workName').value,
     hours: Number(b.querySelector('.workHours').value || 0)
@@ -755,47 +756,37 @@ function saveEntry(entryIndex = null){
   if(!companyData[currentCompany].calendar[currentDate]) companyData[currentCompany].calendar[currentDate] = [];
 
   if(entryIndex !== null && entryIndex !== 'null'){
-    // ✅ Actualizar solo si el currentUser es el owner original
+    // ✅ Actualizar sin cambiar el owner ni validatedBy
     const existing = companyData[currentCompany].calendar[currentDate][entryIndex];
-    if(existing.owner !== currentUser.uid){
-      return alert("No tienes permiso para editar este parte.");
-    }
-
-    companyData[currentCompany].calendar[currentDate][entryIndex] = {
-      ...existing,
-      name,
-      rank,
-      works,
-      total
-    };
+    companyData[currentCompany].calendar[currentDate][entryIndex] = { ...existing, name, rank, works, total };
   } else {
-    // 🔹 Crear nuevo parte y marcar owner
-    const newEntry = { 
-      name, 
-      rank, 
-      works, 
-      total, 
-      owner: currentUser.uid, 
-      validatedBy: [] // nadie ha validado aún
-    };
-    companyData[currentCompany].calendar[currentDate].push(newEntry);
-
+    // ✅ Nuevo parte con owner y lista de validaciones vacía
+    companyData[currentCompany].calendar[currentDate].push({
+        name,
+        rank,
+        works,
+        total,
+        owner: currentUser.uid,
+        validatedBy: []
+    });
     // Añadir plantilla si no existe
     if(!companyData[currentCompany].templates.find(t => t.name === name)){
       companyData[currentCompany].templates.push({ name, rank });
     }
   }
 
-  // Guardar cambios en Firebase para todos los owners
+  // 🔹 Guardar cambios para todos los owners
   const owners = companyData[currentCompany].owners || {};
   Object.keys(owners).forEach(uid => {
     db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
-      .catch(err => console.error("Error guardando para owner", uid, err));
+      .catch(err => console.error("Error guardando en Firebase para owner", uid, err));
   });
 
+  // 🔹 Actualizar UI
   renderCalendar();
   closeModal();
 }
+
 
 
 
@@ -820,50 +811,55 @@ function showDaySummary(dateKey){
     totalP.textContent = `Total Horas: ${e.total}`;
     workerDiv.appendChild(totalP);
 
-    // 🔹 Permisos
+    // ✅ Mostrar quién validó
+    if(e.validatedBy && e.validatedBy.length > 0){
+      const vDiv = document.createElement('div');
+      vDiv.textContent = `Validado por: ${e.validatedBy.map(uid => uid === currentUser.uid ? "Tú" : uid).join(", ")}`;
+      vDiv.style.fontSize = '0.85rem';
+      workerDiv.appendChild(vDiv);
+    }
+
+    // ✅ Botones según permisos
     if(e.owner === currentUser.uid){
-      // El owner original puede editar y eliminar
-      const editBtn = document.createElement('button');
-      editBtn.textContent = 'Editar';
-      editBtn.className = 'summary-btn edit';
-      editBtn.onclick = () => openModal(dateKey, false, e, index);
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Editar';
+        editBtn.className = 'summary-btn edit';
+        editBtn.onclick = () => openModal(dateKey, false, e, index);
 
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = 'Eliminar';
-      deleteBtn.className = 'summary-btn delete';
-      deleteBtn.onclick = () => {
-        if(confirm('Eliminar este registro?')){
-          entries.splice(index,1);
-          if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
-          const owners = companyData[currentCompany].owners || {};
-          Object.keys(owners).forEach(uid => {
-            db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
-              .catch(err => console.error("Error guardando para owner", uid, err));
-          });
-          showDaySummary(dateKey);
-          renderCalendar();
-        }
-      };
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Eliminar';
+        deleteBtn.className = 'summary-btn delete';
+        deleteBtn.onclick = () => {
+            if(confirm('Eliminar este registro?')){
+                entries.splice(index,1);
+                if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+                const owners = companyData[currentCompany].owners || {};
+                Object.keys(owners).forEach(uid => {
+                    db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
+                      .catch(err => console.error("Error guardando para owner", uid, err));
+                });
+                showDaySummary(dateKey);
+                renderCalendar();
+            }
+        };
 
-      workerDiv.appendChild(editBtn);
-      workerDiv.appendChild(deleteBtn);
-
+        workerDiv.appendChild(editBtn);
+        workerDiv.appendChild(deleteBtn);
     } else {
-      // Otros owners sólo pueden validar
-      const validBtn = document.createElement('button');
-      validBtn.textContent = e.validatedBy.includes(currentUser.uid) ? '✅ Validado' : 'Validar';
-      validBtn.className = 'summary-btn edit';
-      validBtn.disabled = e.validatedBy.includes(currentUser.uid);
-      validBtn.onclick = () => {
-        e.validatedBy.push(currentUser.uid);
-        const owners = companyData[currentCompany].owners || {};
-        Object.keys(owners).forEach(uid => {
-          db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
-            .catch(err => console.error("Error guardando para owner", uid, err));
-        });
-        showDaySummary(dateKey);
-      };
-      workerDiv.appendChild(validBtn);
+        // ✅ Botón validar para otros owners
+        const validateBtn = document.createElement('button');
+        validateBtn.textContent = e.validatedBy && e.validatedBy.includes(currentUser.uid) ? 'Validado ✅' : 'Validar';
+        validateBtn.className = 'summary-btn edit';
+        validateBtn.onclick = () => {
+            if(!e.validatedBy) e.validatedBy = [];
+            if(!e.validatedBy.includes(currentUser.uid)){
+                e.validatedBy.push(currentUser.uid);
+                saveValidation(e, dateKey);
+                showDaySummary(dateKey);
+                renderCalendar();
+            }
+        };
+        workerDiv.appendChild(validateBtn);
     }
 
     workerDiv.appendChild(document.createElement('hr'));
@@ -872,6 +868,7 @@ function showDaySummary(dateKey){
 
   document.getElementById('calendarModal').style.display = 'flex';
 }
+
 
 
 function saveValidation(entry, dateKey){
