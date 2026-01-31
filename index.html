@@ -458,23 +458,22 @@ function addCompany() {
           if (selected) {
             const subUid = selected[0];
 
-      // 🔹 Agregar owner en empresa (contratista)
-      db.ref(`users/${currentUser.uid}/companies/${empresaId}/owners/${subUid}`).set(true);
+      // 🔹 Agregar owner en empresa (contratista y subcontratista)
+newCompany.owners[subUid] = true; // 🔹 aquí agregamos al subcontratista como owner
 
-      // 🔹 Agregar la empresa completa en nodo del subcontratista
-      // ✅ Clonamos la empresa y añadimos al subcontratista como owner
-      const subCompany = { ...newCompany }; // copiar la empresa
-      if(!subCompany.owners) subCompany.owners = {};
-      subCompany.owners[subUid] = true;     // subcontratista como owner
+// 🔹 Guardar empresa completa en nodo del contratista
+db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany);
 
-      db.ref(`users/${subUid}/companies/${empresaId}`).set(subCompany)
-        .then(() => {
-          alert("Subcontratista vinculado correctamente");
-        })
-        .catch(err => {
-          console.error("Error vinculando subcontratista:", err);
-          alert("Error vinculando subcontratista: " + err.message);
-          });
+// 🔹 Guardar empresa completa en nodo del subcontratista
+db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
+  .then(() => {
+    alert("Subcontratista vinculado correctamente");
+  })
+  .catch(err => {
+    console.error("Error vinculando subcontratista:", err);
+    alert("Error vinculando subcontratista: " + err.message);
+  });
+
 
 
           } else {
