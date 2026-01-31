@@ -1120,20 +1120,21 @@ if(user){
   loadSharedCompanies();
 
   // 🔹 Leer el rol del usuario desde Firebase
-  db.ref(`users/${user.uid}/info/role`)
-    .once('value')
-    .then(snapshot => {
-      currentUserRole = snapshot.val();
+db.ref(`users/${user.uid}/info/role`)
+  .once('value')
+  .then(snapshot => {
+    // 🔹 Normalizamos: minúsculas y sin espacios
+    currentUserRole = (snapshot.val() || "").trim().toLowerCase();
+    console.log("Rol del usuario:", currentUserRole);
 
-      console.log("Rol del usuario:", currentUserRole);
+    // 🔹 Mostrar la app
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('appView').style.display = 'block';
 
-      // 🔹 Mostrar la app
-      document.getElementById('loginView').style.display = 'none';
-      document.getElementById('appView').style.display = 'block';
+    // 🔹 Mostrar menú de empresas
+    showMenu();
+  })
 
-      // 🔹 Mostrar menú de empresas
-      showMenu();
-    })
     .catch(err => {
       alert("Error leyendo rol de usuario: " + err.message);
     });
