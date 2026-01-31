@@ -424,72 +424,63 @@ function addCompany() {
     return;
   }
 
-  // 🔹 Generar un ID único para la empresa
-  const empresaId = 'empresa_' + Date.now(); // sencillo y único
+  const empresaId = 'empresa_' + Date.now();
 
-  // 🔹 Crear empresa en nodo del contratista
+  // 🔹 Solo guardamos metadata de la empresa en cada usuario
   const newCompany = {
     name: name,
-    calendar: {},
     templates: [],
     owners: {}
   };
-  newCompany.owners[currentUser.uid] = true; // contratista como owner
+  newCompany.owners[currentUser.uid] = true;
 
-  db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany)
-    .then(() => {
-      console.log("Empresa creada correctamente:", name);
+  // Guardar metadata en nodo del usuario
+  db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany);
 
-      // 🔹 Preguntar si se quiere vincular con un subcontratista
-      if (confirm("¿Quieres vincular esta empresa con un subcontratista existente?")) {
-        // 🔹 Cargar subcontratistas registrados
-        db.ref('users').once('value').then(snapshot => {
-          const users = snapshot.val() || {};
-          const subUsers = Object.entries(users)
-            .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
+  // 🔹 Crear nodo central de calendario vacío
+  db.ref(`companyCalendars/${empresaId}`).set({});
 
-          if (subUsers.length === 0) return alert("No hay subcontratistas registrados");
+  // 🔹 Vincular subcontratista opcional
+  if (confirm("¿Quieres vincular esta empresa con un subcontratista existente?")) {
+    db.ref('users').once('value').then(snapshot => {
+      const users = snapshot.val() || {};
+      const subUsers = Object.entries(users)
+        .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
 
-          // 🔹 Selección mediante prompt sencillo
-          const names = subUsers.map(([uid, u]) => `${u.info.email} (${uid})`).join("\n");
-          const sel = prompt("Subcontratistas registrados:\n" + names + "\n\nEscribe el UID del subcontratista a vincular:");
+      if (subUsers.length === 0) return alert("No hay subcontratistas registrados");
 
-          const selected = subUsers.find(([uid, u]) => uid === sel.trim());
-          if (selected) {
-            const subUid = selected[0];
+      const names = subUsers.map(([uid, u]) => `${u.info.email} (${uid})`).join("\n");
+      const sel = prompt("Subcontratistas registrados:\n" + names + "\n\nEscribe el UID del subcontratista a vincular:");
+      const selected = subUsers.find(([uid, u]) => uid === sel.trim());
 
-      // 🔹 Agregar owner en empresa (contratista y subcontratista)
-      newCompany.owners[subUid] = true; // 🔹 aquí agregamos al subcontratista como owner
+      if (selected) {
+        const subUid = selected[0];
 
-      // 🔹 Guardar empresa completa en nodo del contratista
-      db.ref(`users/${currentUser.uid}/companies/${empresaId}`).set(newCompany);
-
-      // 🔹 Guardar empresa completa en nodo del subcontratista
-      db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
-      .then(() => {
-        alert("Subcontratista vinculado correctamente");
-      })
-      .catch(err => {
-        console.error("Error vinculando subcontratista:", err);
-        alert("Error vinculando subcontratista: " + err.message);
-      });
-
-
-
-          } else {
-            alert("UID no válido o cancelado");
-          }
-        });
+        // Añadir owner en metadata
+        db.ref(`users/${currentUser.uid}/companies/${empresaId}/owners/${subUid}`).set(true);
+        db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
+          .then(() => alert("Subcontratista vinculado correctamente"))
+          .catch(err => alert("Error vinculando subcontratista: " + err.message));
+      } else {
+        alert("UID no válido o cancelado");
       }
+    });
+  }
 
-      // 🔹 Actualizar companyData local y lista
-      companyData[empresaId] = newCompany;
-      document.getElementById('newCompanyName').value = '';
-      renderCompanyList();
-    })
-    .catch(err => {
-      console.error("Error creando empresa:", err);
-      alert("Error creando empresa: " + err.message);
+  companyData[empresaId] = newCompany;
+  document.getElementById('newCompanyName').value = '';
+  renderCompanyList();
+}
+
+function loadCalendar(callback){
+  if(!currentCompany) return;
+
+  // 🔹 Leer calendario en tiempo real
+  db.ref(`companyCalendars/${currentCompany}`)
+    .on('value', snapshot => {
+      if(!companyData[currentCompany]) companyData[currentCompany] = {};
+      companyData[currentCompany].calendar = snapshot.val() || {};
+      if(callback) callback();
     });
 }
 
@@ -536,18 +527,22 @@ function renderCompanyList() {
 
 function openCompany(name){
   currentCompany = name;
-  if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
-  if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
-  if(!companyData[currentCompany].templates) companyData[currentCompany].templates = [];
+  if(!companyData[currentCompany]) companyData[currentCompany] = { templates: [], calendar:{} };
+
+  document.getElementById('companyMenu').style.display = 'none';
+  document.getElementById('calendarView').style.display = 'block';
+  document.getElementById('selectedCompanyName').textContent = name;
 
   const today = new Date();
   currentMonth = today.getMonth();
   currentYear = today.getFullYear();
-  document.getElementById('companyMenu').style.display = 'none';
-  document.getElementById('calendarView').style.display = 'block';
-  document.getElementById('selectedCompanyName').textContent = name;
-  renderCalendar();
+
+  // 🔹 Cargar calendario en tiempo real
+  loadCalendar(() => {
+    renderCalendar();
+  });
 }
+
 function backToMenu(){ currentCompany = null; showMenu(); }
 
 function prevMonth(){ currentMonth--; if(currentMonth < 0){ currentMonth = 11; currentYear--; } renderCalendar(); }
@@ -754,11 +749,14 @@ function saveEntry(entryIndex = null){
   const name = document.getElementById('quickWorkerName').value.trim();
   const rank = document.getElementById('quickWorkerRank').value.trim();
   if(!name) return alert("Ingrese nombre del trabajador");
+
   const works = Array.from(document.querySelectorAll('.work-block')).map(b => ({
     work: b.querySelector('.workName').value,
     hours: Number(b.querySelector('.workHours').value || 0)
   }));
+
   const total = works.reduce((s,w)=>s + w.hours, 0);
+
   if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
   if(!companyData[currentCompany].calendar[currentDate]) companyData[currentCompany].calendar[currentDate] = [];
 
@@ -771,11 +769,15 @@ function saveEntry(entryIndex = null){
     }
   }
 
-  // 🔹 Guardar cambios en el Contratista
-  saveToStorage();
+  // 🔹 Guardar en nodo central del calendario
+  db.ref(`companyCalendars/${currentCompany}`).set(companyData[currentCompany].calendar)
+    .then(() => console.log("Calendario actualizado"))
+    .catch(err => console.error("Error guardando calendario:", err));
+
   renderCalendar();
   closeModal();
 }
+
 
 
 // ==== Mostrar resumen de un día ====
