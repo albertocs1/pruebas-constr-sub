@@ -356,8 +356,69 @@ let currentMonth = null;
 let currentYear = null;
 let costByRank = {};
 let exportCallback = null;
+let sharedCompanies = {};
   
 // ==== Firebase helpers ====
+
+// ==================== EMPRESAS COMPARTIDAS ====================
+
+// Crear una empresa compartida
+function createSharedCompany(companyName, ownerUid, linkedUsers = {}) {
+  const companyId = db.ref().child('companies').push().key;
+
+  const companyObj = {
+    name: companyName,
+    owner: ownerUid,
+    linkedUsers: {
+      [ownerUid]: 'contratista',
+      ...linkedUsers
+    },
+    calendar: {},
+    templates: []
+  };
+
+  return db.ref(`companies/${companyId}`).set(companyObj)
+    .then(() => companyId);
+}
+
+// Vincular una empresa a un usuario
+function linkCompanyToUser(uid, companyId) {
+  return db.ref(`users/${uid}/linkedCompanies/${companyId}`).set(true);
+}
+
+// Cargar empresas vinculadas al usuario actual
+function loadSharedCompanies(callback) {
+  if (!currentUser) {
+    sharedCompanies = {};
+    if (callback) callback();
+    return;
+  }
+
+  db.ref(`users/${currentUser.uid}/linkedCompanies`)
+    .once('value')
+    .then(snapshot => {
+      const linked = snapshot.val() || {};
+      const companyIds = Object.keys(linked);
+
+      if (companyIds.length === 0) {
+        sharedCompanies = {};
+        if (callback) callback();
+        return;
+      }
+
+      const promises = companyIds.map(id =>
+        db.ref(`companies/${id}`).once('value').then(s => {
+          sharedCompanies[id] = s.val();
+        })
+      );
+
+      Promise.all(promises).then(() => {
+        if (callback) callback();
+      });
+    });
+}
+
+
 // Guardar datos solo del usuario actual
 function saveToStorage(){
   if(!currentUser || !currentCompany) {
