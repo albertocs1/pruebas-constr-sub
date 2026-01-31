@@ -744,28 +744,40 @@ function saveEntry(entryIndex = null){
   const name = document.getElementById('quickWorkerName').value.trim();
   const rank = document.getElementById('quickWorkerRank').value.trim();
   if(!name) return alert("Ingrese nombre del trabajador");
+
+  // Obtener trabajos y horas
   const works = Array.from(document.querySelectorAll('.work-block')).map(b => ({
     work: b.querySelector('.workName').value,
     hours: Number(b.querySelector('.workHours').value || 0)
   }));
   const total = works.reduce((s,w)=>s + w.hours, 0);
+
   if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
   if(!companyData[currentCompany].calendar[currentDate]) companyData[currentCompany].calendar[currentDate] = [];
 
+  // Actualizar o añadir registro
   if(entryIndex !== null && entryIndex !== 'null'){
     companyData[currentCompany].calendar[currentDate][entryIndex] = { name, rank, works, total };
   } else {
     companyData[currentCompany].calendar[currentDate].push({ name, rank, works, total });
+    // Añadir plantilla si no existe
     if(!companyData[currentCompany].templates.find(t => t.name === name)){
       companyData[currentCompany].templates.push({ name, rank });
     }
   }
 
-  // 🔹 Guardar cambios en el Contratista
-  saveToStorage();
+  // 🔹 Guardar cambios para todos los owners
+  const owners = companyData[currentCompany].owners || {};
+  Object.keys(owners).forEach(uid => {
+    db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
+      .catch(err => console.error("Error guardando para owner", uid, err));
+  });
+
+  // 🔹 Actualizar UI
   renderCalendar();
   closeModal();
 }
+
 
 
 // ==== Mostrar resumen de un día ====
