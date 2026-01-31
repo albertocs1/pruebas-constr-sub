@@ -229,18 +229,29 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
 
 <!-- MENU EMPRESAS -->
 <div id="companyMenu">
+  <h2>Empresas</h2>
   <!-- Email del usuario conectado -->
   <p id="currentUserEmail" style="font-size:0.9rem; color:#555; margin-bottom:8px;"></p>
-
-  <!-- Lista de empresas -->
+  
   <div id="companyList"></div>
+  <!-- Añadir empresa nueva -->
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+    <input type="text" id="newCompanyName" placeholder="Nueva empresa">
+    <button onclick="addCompany()" class="back-btn">Añadir</button>
+  </div>
+  <!-- Añadir Subcontratista -->
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+  <select id="subcontractorSelect">
+    <option value="">Añadir Subcontratista existente</option>
+  </select>
+  <button onclick="addSubcontractorAsCompany()" class="back-btn">Añadir</button>
+</div>
 
-  <!-- Botón Cerrar sesión / Cambiar usuario -->
+  
   <div style="margin-top:10px;">
     <button id="logoutBtn" class="back-btn" style="background:#ef4444; width:100%;">Cerrar sesión / Cambiar usuario</button>
   </div>
 </div>
-
 
 <!-- VISTA CALENDARIO -->
 <div id="calendarView">
@@ -345,69 +356,8 @@ let currentMonth = null;
 let currentYear = null;
 let costByRank = {};
 let exportCallback = null;
-let sharedCompanies = {};
   
 // ==== Firebase helpers ====
-
-// ==================== EMPRESAS COMPARTIDAS ====================
-
-// Crear una empresa compartida
-function createSharedCompany(companyName, ownerUid, linkedUsers = {}) {
-  const companyId = db.ref().child('companies').push().key;
-
-  const companyObj = {
-    name: companyName,
-    owner: ownerUid,
-    linkedUsers: {
-      [ownerUid]: 'contratista',
-      ...linkedUsers
-    },
-    calendar: {},
-    templates: []
-  };
-
-  return db.ref(`companies/${companyId}`).set(companyObj)
-    .then(() => companyId);
-}
-
-// Vincular una empresa a un usuario
-function linkCompanyToUser(uid, companyId) {
-  return db.ref(`users/${uid}/linkedCompanies/${companyId}`).set(true);
-}
-
-// Cargar empresas vinculadas al usuario actual
-function loadSharedCompanies(callback) {
-  if (!currentUser) {
-    sharedCompanies = {};
-    if (callback) callback();
-    return;
-  }
-
-  db.ref(`users/${currentUser.uid}/linkedCompanies`)
-    .once('value')
-    .then(snapshot => {
-      const linked = snapshot.val() || {};
-      const companyIds = Object.keys(linked);
-
-      if (companyIds.length === 0) {
-        sharedCompanies = {};
-        if (callback) callback();
-        return;
-      }
-
-      const promises = companyIds.map(id =>
-        db.ref(`companies/${id}`).once('value').then(s => {
-          sharedCompanies[id] = s.val();
-        })
-      );
-
-      Promise.all(promises).then(() => {
-        if (callback) callback();
-      });
-    });
-}
-
-
 // Guardar datos solo del usuario actual
 function saveToStorage(){
   if(!currentUser || !currentCompany) {
@@ -473,34 +423,28 @@ function showMenu() {
   });
 }
 
-ffunction addCompany() {
-  if (!currentUser) return alert("Usuario no autenticado");
 
-  // 🔹 Tomamos el valor del input
-  const input = document.getElementById('newCompanyName');
-  const name = input.value.trim();
-  if (!name) return alert("Ingrese un nombre para la empresa");
+function addCompany(){
+  if(!currentUser) return alert("Usuario no autenticado");
 
-  // 🔹 Limpiamos el input
-  input.value = '';
+  const name = document.getElementById('newCompanyName').value.trim();
+  if(!name) return;
+  if(companyData[name]) {
+    alert('Ya existe esa empresa');
+    return;
+  }
 
-  // 🔹 Crear empresa en Firebase
-  createSharedCompany(name, currentUser.uid)
-    .then(companyId => {
-      // 🔹 Vincularla al usuario actual
-      return linkCompanyToUser(currentUser.uid, companyId)
-        .then(() => companyId);
-    })
-    .then(companyId => {
-      // 🔹 Recargar sharedCompanies y renderizar lista
-      loadSharedCompanies(() => {
-        renderCompanyList();
-      });
-    })
-    .catch(err => {
-      console.error("Error añadiendo empresa:", err);
-      alert("No se pudo añadir la empresa: " + err.message);
-    });
+  // Crear nueva empresa localmente
+  companyData[name] = { calendar: {}, templates: [] };
+  document.getElementById('newCompanyName').value = '';
+
+  currentCompany = name;
+
+  // Guardar en Firebase
+  saveToStorage();
+
+  // 🔹 Actualizar la lista inmediatamente, sin esperar a Firebase
+  renderCompanyList();
 }
 
 function addSubcontractorAsCompany() {
@@ -577,95 +521,21 @@ function loadSubcontractorsDropdown() {
     .catch(err => console.error("Error cargando subcontratistas:", err));
 }
 
-function renderCompanyList() {
+
+
+function renderCompanyList(){
   const container = document.getElementById('companyList');
-  if (!container) return console.error('No existe el contenedor #companyList');
-
-  container.innerHTML = ''; // Limpiamos todo lo anterior
-
-  // 1️⃣ Email del usuario
-  const emailDiv = document.createElement('div');
-  emailDiv.textContent = "Conectado como: " + (currentUser?.email || '');
-  emailDiv.style.fontWeight = '600';
-  emailDiv.style.marginBottom = '12px';
-  container.appendChild(emailDiv);
-
-  // 2️⃣ Input y botón Añadir Empresa (solo contratista)
-  if (currentUserRole === 'contratista') {
-    const addDiv = document.createElement('div');
-    addDiv.style.display = 'flex';
-    addDiv.style.gap = '6px';
-    addDiv.style.marginBottom = '12px';
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Nombre nueva empresa';
-    input.id = 'newCompanyName';
-    input.style.flex = '1';
-    input.style.padding = '6px';
-    input.style.borderRadius = '6px';
-    input.style.border = '1px solid #d1d5db';
-
-    const addBtn = document.createElement('button');
-    addBtn.textContent = '➕ Añadir';
-    addBtn.className = 'back-btn';
-    addBtn.onclick = addCompany;
-
-    addDiv.appendChild(input);
-    addDiv.appendChild(addBtn);
-    container.appendChild(addDiv);
-  }
-
-  // 3️⃣ Lista de empresas
-  const listDiv = document.createElement('div');
-  const companies = Object.keys(sharedCompanies || {}).sort();
-  if (companies.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = 'No hay empresas registradas';
-    empty.style.opacity = '0.7';
-    listDiv.appendChild(empty);
-  } else {
-    companies.forEach(id => {
-      const comp = sharedCompanies[id];
-      const div = document.createElement('div');
-      div.className = 'company-item';
-      div.textContent = comp.name || id;
-      div.onclick = () => openCompany(id);
-      listDiv.appendChild(div);
-    });
-  }
-  container.appendChild(listDiv);
-
-  // 4️⃣ Botón Cerrar sesión / Cambiar usuario
-  const logoutBtn = document.createElement('button');
-  logoutBtn.textContent = 'Cerrar sesión / Cambiar usuario';
-  logoutBtn.className = 'back-btn';
-  logoutBtn.style.background = '#ef4444';
-  logoutBtn.style.color = 'white';
-  logoutBtn.style.marginTop = '16px';
-  logoutBtn.onclick = logout;
-  container.appendChild(logoutBtn);
+  container.innerHTML = '';
+  Object.keys(companyData).sort().forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'company-item';
+    // 🔹 Si tiene displayName, mostrarlo; si no, mostrar la clave
+    div.textContent = companyData[c].displayName || c;
+    div.onclick = () => openCompany(c);
+    container.appendChild(div);
+  });
 }
 
-
-
-function openAddCompanyModal() {
-  const name = prompt('Nombre de la nueva empresa:');
-  if (!name) return;
-
-  // De momento solo creamos la empresa (sin vincular usuarios)
-  createSharedCompany(name, currentUser.uid)
-    .then(companyId => {
-      return linkCompanyToUser(currentUser.uid, companyId);
-    })
-    .then(() => {
-      loadSharedCompanies(() => {
-        renderCompanyList();
-      });
-    });
-}
-
-  
 function openCompany(name){
   currentCompany = name;
   if(!companyData[currentCompany]) companyData[currentCompany] = { calendar:{}, templates:[] };
@@ -1163,24 +1033,22 @@ auth.onAuthStateChanged(user => {
 
 if(user){
   currentUser = user;
-  loadSharedCompanies();
 
   // 🔹 Leer el rol del usuario desde Firebase
-db.ref(`users/${user.uid}/info/role`)
-  .once('value')
-  .then(snapshot => {
-    // 🔹 Normalizamos: minúsculas y sin espacios
-    currentUserRole = (snapshot.val() || "").trim().toLowerCase();
-    console.log("Rol del usuario:", currentUserRole);
+  db.ref(`users/${user.uid}/info/role`)
+    .once('value')
+    .then(snapshot => {
+      currentUserRole = snapshot.val();
 
-    // 🔹 Mostrar la app
-    document.getElementById('loginView').style.display = 'none';
-    document.getElementById('appView').style.display = 'block';
+      console.log("Rol del usuario:", currentUserRole);
 
-    // 🔹 Mostrar menú de empresas
-    showMenu();
-  })
+      // 🔹 Mostrar la app
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('appView').style.display = 'block';
 
+      // 🔹 Mostrar menú de empresas
+      showMenu();
+    })
     .catch(err => {
       alert("Error leyendo rol de usuario: " + err.message);
     });
