@@ -473,22 +473,32 @@ function showMenu() {
   });
 }
 
-function addCompany(nameFromPrompt) {
+function addCompany() {
   if (!currentUser) return alert("Usuario no autenticado");
 
-  const name = nameFromPrompt || document.getElementById('newCompanyName')?.value?.trim();
-  if (!name) return;
-  if (companyData[name]) {
-    alert('Ya existe esa empresa');
-    return;
-  }
+  const name = document.getElementById('newCompanyName').value.trim();
+  if (!name) return alert("Ingrese un nombre para la empresa");
 
-  companyData[name] = { calendar: {}, templates: [] };
-  currentCompany = name;
+  document.getElementById('newCompanyName').value = '';
 
-  saveToStorage();
-  renderCompanyList();
+  // 1️⃣ Crear empresa en Firebase
+  createSharedCompany(name, currentUser.uid)
+    .then(companyId => {
+      // 2️⃣ Vincularla al usuario actual
+      return linkCompanyToUser(currentUser.uid, companyId);
+    })
+    .then(() => {
+      // 3️⃣ Recargar sharedCompanies y renderizar lista
+      loadSharedCompanies(() => {
+        renderCompanyList();
+      });
+    })
+    .catch(err => {
+      console.error("Error añadiendo empresa:", err);
+      alert("No se pudo añadir la empresa: " + err.message);
+    });
 }
+
 
 
 function addSubcontractorAsCompany() {
