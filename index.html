@@ -658,40 +658,22 @@ function renderCalendar(){
 
     const dayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
 
-    if(!dayData && companyData[currentCompany] && companyData[currentCompany].calendar){
-      const altKey1 = `${currentYear}-${currentMonth+1}-${day}`;
-      if(companyData[currentCompany].calendar[altKey1]) {
-        companyData[currentCompany].calendar[dateKey] = companyData[currentCompany].calendar[altKey1];
-        delete companyData[currentCompany].calendar[altKey1];
-      }
-    }
-
-    const finalDayData = (companyData[currentCompany] && companyData[currentCompany].calendar) ? companyData[currentCompany].calendar[dateKey] : null;
-
-    if(finalDayData && finalDayData.length > 0){
+    if(dayData && dayData.length > 0){
       const preview = document.createElement('div');
       preview.className = 'worker-preview-container';
-      finalDayData.forEach(w => {
+      dayData.forEach(w => {
         const p = document.createElement('div');
 
         const isValidated = w.validatedBy && w.validatedBy.length > 0;
         const tick = isValidated ? ' ✔' : '';
 
-        // Icono ⚠️ si no lo añadió el usuario actual
-        const ownerIcon = w.owner !== currentUser.uid ? ' ⚠️' : '';
+        // ⚠️ solo si no es tu parte y no está validado
+        const ownerIcon = (!isValidated && w.owner !== currentUser.uid) ? ' ⚠️' : '';
 
         p.textContent = `${w.name} (${w.total}h)${tick}${ownerIcon}`;
         p.style.fontSize = '0.9rem';
-
-        if (isValidated) {
+        if(isValidated){
           p.style.color = '#2563eb';
-          p.style.fontWeight = '600';
-        }
-
-        if(ownerIcon){
-          p.style.background = '#fef3c7';
-          p.style.padding = '2px 4px';
-          p.style.borderRadius = '4px';
           p.style.fontWeight = '600';
         }
 
@@ -708,6 +690,7 @@ function renderCalendar(){
     calendarDiv.appendChild(div);
   }
 }
+
 
 
 // ==== Modal: abrir, añadir, editar ====
@@ -863,30 +846,24 @@ function showDaySummary(dateKey){
     const workerDiv = document.createElement('div');
     workerDiv.style.marginBottom = '8px';
 
-    // ⚠️ Destacar si no lo añadió el usuario actual
-    const ownerIcon = e.owner !== currentUser.uid ? ' ⚠️' : '';
-    if(ownerIcon){
-      workerDiv.style.background = '#fef3c7';
-      workerDiv.style.padding = '8px';
-      workerDiv.style.borderRadius = '8px';
-    }
+    const isValidated = e.validatedBy && e.validatedBy.length > 0;
 
+    // ⚠️ solo si no eres owner y no está validado
+    const ownerIcon = (!isValidated && e.owner !== currentUser.uid) ? ' ⚠️' : '';
+    
     workerDiv.innerHTML = `<h3 style="margin:0 0 6px 0">${e.name} (${e.rank})${ownerIcon}</h3>`;
 
-    // Mostrar trabajos
     e.works.forEach(w => {
       const p = document.createElement('div');
       p.textContent = `${w.work}: ${w.hours}h`;
       workerDiv.appendChild(p);
     });
 
-    // Total horas
     const totalP = document.createElement('div');
     totalP.textContent = `Total Horas: ${e.total}`;
     workerDiv.appendChild(totalP);
 
-    // Validaciones
-    if(e.validatedBy && e.validatedBy.length > 0){
+    if(isValidated){
       const vDiv = document.createElement('div');
       vDiv.textContent = `Validado por: ${e.validatedBy
         .map(uid => uid === currentUser.uid ? "Tú" : getUserDisplayName(uid))
@@ -896,36 +873,31 @@ function showDaySummary(dateKey){
     }
 
     const isOwner = (e.owner === currentUser.uid);
-    const hasValidation = e.validatedBy && e.validatedBy.length > 0;
     
-    if(isOwner){
-      if(!hasValidation){
-        const editBtn = document.createElement('button');
-        editBtn.textContent = 'Editar';
-        editBtn.className = 'summary-btn edit';
-        editBtn.onclick = () => openModal(dateKey, false, e, index);
+    if(isOwner && !isValidated){
+      const editBtn = document.createElement('button');
+      editBtn.textContent = 'Editar';
+      editBtn.className = 'summary-btn edit';
+      editBtn.onclick = () => openModal(dateKey, false, e, index);
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Eliminar';
-        deleteBtn.className = 'summary-btn delete';
-        deleteBtn.onclick = () => {
-          if(confirm('Eliminar este registro?')){
-            entries.splice(index,1);
-            if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
-            const owners = companyData[currentCompany].owners || {};
-            Object.keys(owners).forEach(uid => {
-              db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
-                .catch(err => console.error("Error guardando para owner", uid, err));
-            });
-            showDaySummary(dateKey);
-            renderCalendar();
-          }
-        };
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Eliminar';
+      deleteBtn.className = 'summary-btn delete';
+      deleteBtn.onclick = () => {
+        if(confirm('Eliminar este registro?')){
+          entries.splice(index,1);
+          if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+          Object.keys(companyData[currentCompany].owners || {}).forEach(uid => {
+            db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany]);
+          });
+          showDaySummary(dateKey);
+          renderCalendar();
+        }
+      };
 
-        workerDiv.appendChild(editBtn);
-        workerDiv.appendChild(deleteBtn);
-      }
-    } else {
+      workerDiv.appendChild(editBtn);
+      workerDiv.appendChild(deleteBtn);
+    } else if(!isOwner){
       const alreadyValidated = e.validatedBy && e.validatedBy.includes(currentUser.uid);
       const validateBtn = document.createElement('button');
       validateBtn.textContent = alreadyValidated ? 'Validado ✅' : 'Validar';
@@ -948,6 +920,7 @@ function showDaySummary(dateKey){
 
   document.getElementById('calendarModal').style.display = 'flex';
 }
+
 
 
 
