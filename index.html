@@ -757,14 +757,22 @@ function saveEntry(entryIndex = null){
 
   // Actualizar o añadir registro
   if(entryIndex !== null && entryIndex !== 'null'){
-    companyData[currentCompany].calendar[currentDate][entryIndex] = { name, rank, works, total };
+    const existing = companyData[currentCompany].calendar[currentDate][entryIndex];
+    companyData[currentCompany].calendar[currentDate][entryIndex] = { ...existing, name, rank, works, total };
   } else {
-    companyData[currentCompany].calendar[currentDate].push({ name, rank, works, total });
-    // Añadir plantilla si no existe
+    companyData[currentCompany].calendar[currentDate].push({
+        name,
+        rank,
+        works,
+        total,
+        owner: currentUser.uid,     // ✅ quien creó el parte
+        validatedBy: []             // ✅ lista de owners que validaron
+    });
     if(!companyData[currentCompany].templates.find(t => t.name === name)){
       companyData[currentCompany].templates.push({ name, rank });
     }
-  }
+}
+
 
   // 🔹 Guardar cambios para todos los owners
   const owners = companyData[currentCompany].owners || {};
@@ -800,43 +808,72 @@ function showDaySummary(dateKey){
     totalP.textContent = `Total Horas: ${e.total}`;
     workerDiv.appendChild(totalP);
 
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Editar';
-    editBtn.className = 'summary-btn edit';
-    editBtn.onclick = () => openModal(dateKey, false, e, index);
+    // ✅ Mostrar quién validó
+    if(e.validatedBy && e.validatedBy.length > 0){
+      const vDiv = document.createElement('div');
+      vDiv.textContent = `Validado por: ${e.validatedBy.map(uid => uid === currentUser.uid ? "Tú" : uid).join(", ")}`;
+      vDiv.style.fontSize = '0.85rem';
+      workerDiv.appendChild(vDiv);
+    }
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Eliminar';
-    deleteBtn.className = 'summary-btn delete';
-    deleteBtn.onclick = () => {
-      if(confirm('Eliminar este registro?')){
-        entries.splice(index,1);
+    // ✅ Botones según permisos
+    if(e.owner === currentUser.uid){
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Editar';
+        editBtn.className = 'summary-btn edit';
+        editBtn.onclick = () => openModal(dateKey, false, e, index);
 
-      // Si ya no hay registros en el día, eliminamos la clave
-      if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Eliminar';
+        deleteBtn.className = 'summary-btn delete';
+        deleteBtn.onclick = () => {
+            if(confirm('Eliminar este registro?')){
+                entries.splice(index,1);
+                if(entries.length === 0) delete companyData[currentCompany].calendar[dateKey];
+                const owners = companyData[currentCompany].owners || {};
+                Object.keys(owners).forEach(uid => {
+                    db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
+                      .catch(err => console.error("Error guardando para owner", uid, err));
+                });
+                showDaySummary(dateKey);
+                renderCalendar();
+            }
+        };
 
-      // 🔹 Guardar cambios para todos los owners
-      const owners = companyData[currentCompany].owners || {};
-      Object.keys(owners).forEach(uid => {
-        db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
-          .catch(err => console.error("Error guardando para owner", uid, err));
-      });
+        workerDiv.appendChild(editBtn);
+        workerDiv.appendChild(deleteBtn);
+    } else {
+        // ✅ Botón validar para otros owners
+        const validateBtn = document.createElement('button');
+        validateBtn.textContent = e.validatedBy && e.validatedBy.includes(currentUser.uid) ? 'Validado ✅' : 'Validar';
+        validateBtn.className = 'summary-btn edit';
+        validateBtn.onclick = () => {
+            if(!e.validatedBy) e.validatedBy = [];
+            if(!e.validatedBy.includes(currentUser.uid)){
+                e.validatedBy.push(currentUser.uid);
+                saveValidation(e, dateKey);
+                showDaySummary(dateKey);
+                renderCalendar();
+            }
+        };
+        workerDiv.appendChild(validateBtn);
+    }
 
-    // 🔹 Actualizar UI
-    showDaySummary(dateKey);
-    renderCalendar();
-  }
-};
-
-
-    workerDiv.appendChild(editBtn);
-    workerDiv.appendChild(deleteBtn);
     workerDiv.appendChild(document.createElement('hr'));
     summaryDiv.appendChild(workerDiv);
   });
 
   document.getElementById('calendarModal').style.display = 'flex';
 }
+
+function saveValidation(entry, dateKey){
+    const owners = companyData[currentCompany].owners || {};
+    Object.keys(owners).forEach(uid => {
+        db.ref(`users/${uid}/companies/${currentCompany}`).set(companyData[currentCompany])
+          .catch(err => console.error("Error guardando validación para owner", uid, err));
+    });
+}
+
 
 // ==== Export Excel con rango de fechas y costes ====
 // Al pulsar Exportar: mostrar modal con inputs de fecha inicio/fin y costes por rango
