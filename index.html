@@ -481,25 +481,23 @@ function addCompany() {
 
   document.getElementById('newCompanyName').value = '';
 
-  // 1️⃣ Crear empresa en Firebase
   createSharedCompany(name, currentUser.uid)
     .then(companyId => {
-      // 2️⃣ Vincularla al usuario actual
-      return linkCompanyToUser(currentUser.uid, companyId);
+      // Vincular al usuario
+      return linkCompanyToUser(currentUser.uid, companyId).then(() => companyId);
     })
-    .then(() => {
-      // 3️⃣ Recargar sharedCompanies y renderizar lista
-      loadSharedCompanies(() => {
-        renderCompanyList();
-      });
+    .then(companyId => {
+      // 🔹 Actualizar sharedCompanies y companyData manualmente
+      sharedCompanies[companyId] = { name: name, owner: currentUser.uid, linkedUsers: { [currentUser.uid]: 'contratista' } };
+      companyData[companyId] = { calendar: {}, templates: [] };
+
+      renderCompanyList(); // ✅ Renderizar inmediatamente
     })
     .catch(err => {
       console.error("Error añadiendo empresa:", err);
       alert("No se pudo añadir la empresa: " + err.message);
     });
 }
-
-
 
 function addSubcontractorAsCompany() {
   const subUid = document.getElementById('subcontractorSelect').value;
@@ -588,14 +586,30 @@ function renderCompanyList() {
   emailDiv.style.marginBottom = '12px';
   container.appendChild(emailDiv);
 
-  // 2️⃣ Botón Añadir Empresa (solo contratista)
+  // 2️⃣ Input y botón Añadir Empresa (solo contratista)
   if (currentUserRole === 'contratista') {
+    const addDiv = document.createElement('div');
+    addDiv.style.display = 'flex';
+    addDiv.style.gap = '6px';
+    addDiv.style.marginBottom = '12px';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Nombre nueva empresa';
+    input.id = 'newCompanyName';
+    input.style.flex = '1';
+    input.style.padding = '6px';
+    input.style.borderRadius = '6px';
+    input.style.border = '1px solid #d1d5db';
+
     const addBtn = document.createElement('button');
-    addBtn.textContent = '➕ Añadir empresa';
+    addBtn.textContent = '➕ Añadir';
     addBtn.className = 'back-btn';
-    addBtn.style.marginBottom = '12px';
-    addBtn.onclick = () => openAddCompanyModal();
-    container.appendChild(addBtn);
+    addBtn.onclick = addCompany;
+
+    addDiv.appendChild(input);
+    addDiv.appendChild(addBtn);
+    container.appendChild(addDiv);
   }
 
   // 3️⃣ Lista de empresas
