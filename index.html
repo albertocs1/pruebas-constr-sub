@@ -1022,7 +1022,7 @@ function confirmCosts(){
 
 function exportExcel(startDate, endDate) {
   const calendar = companyData[currentCompany].calendar;
-  let data = [["Fecha", "Nombre", "Rango", "Coste", "Trabajo", "Horas", "Importe"]];
+  let data = [["Fecha", "Nombre", "Rango", "Coste", "Trabajo", "Horas", "Importe", "Validación"]];
   let totalPorTrabajador = {};
   let totalPorTrabajo = {};
   let importePorTrabajo = {};
@@ -1039,7 +1039,18 @@ function exportExcel(startDate, endDate) {
       entry.works.forEach(work => {
         const coste = costByRank[entry.rank] || 0;
         const importe = coste * work.hours;
-        data.push([formatDate(dateKey), entry.name, entry.rank, coste, work.work, work.hours, importe]);
+        const validacion = entry.validatedBy && entry.validatedBy.length > 0 ? "Sí" : "No"; // ✅ validación
+
+        data.push([
+          formatDate(dateKey),
+          entry.name,
+          entry.rank,
+          coste,
+          work.work,
+          work.hours,
+          importe,
+          validacion
+        ]);
 
         totalPorTrabajador[entry.name] = (totalPorTrabajador[entry.name] || 0) + work.hours;
         totalPorTrabajo[work.work] = (totalPorTrabajo[work.work] || 0) + work.hours;
@@ -1067,6 +1078,7 @@ function exportExcel(startDate, endDate) {
     `${currentCompany}_partes_obra_${startDate}_a_${endDate}.xlsx`
   );
 }
+
 
 
 // ==== PWA Service Worker (opcional) ====
