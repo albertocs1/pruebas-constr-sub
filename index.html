@@ -462,7 +462,12 @@ function addCompany() {
 db.ref(`users/${currentUser.uid}/companies/${empresaId}/owners/${subUid}`).set(true);
 
 // 🔹 Agregar la empresa completa en nodo del subcontratista
-db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
+// ✅ Clonamos la empresa y añadimos al subcontratista como owner
+const subCompany = { ...newCompany }; // copiar la empresa
+if(!subCompany.owners) subCompany.owners = {};
+subCompany.owners[subUid] = true;     // subcontratista como owner
+
+db.ref(`users/${subUid}/companies/${empresaId}`).set(subCompany)
   .then(() => {
     alert("Subcontratista vinculado correctamente");
   })
@@ -470,6 +475,7 @@ db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
     console.error("Error vinculando subcontratista:", err);
     alert("Error vinculando subcontratista: " + err.message);
   });
+
 
           } else {
             alert("UID no válido o cancelado");
