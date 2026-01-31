@@ -458,13 +458,19 @@ function addCompany() {
           if (selected) {
             const subUid = selected[0];
 
-            // 🔹 Agregar owner en empresa
-            db.ref(`users/${currentUser.uid}/companies/${empresaId}/owners/${subUid}`).set(true);
+// 🔹 Agregar owner en empresa (contratista)
+db.ref(`users/${currentUser.uid}/companies/${empresaId}/owners/${subUid}`).set(true);
 
-            // 🔹 Agregar referencia en nodo del subcontratista
-            db.ref(`users/${subUid}/companies/${empresaId}`).set(true);
+// 🔹 Agregar la empresa completa en nodo del subcontratista
+db.ref(`users/${subUid}/companies/${empresaId}`).set(newCompany)
+  .then(() => {
+    alert("Subcontratista vinculado correctamente");
+  })
+  .catch(err => {
+    console.error("Error vinculando subcontratista:", err);
+    alert("Error vinculando subcontratista: " + err.message);
+  });
 
-            alert("Subcontratista vinculado correctamente");
           } else {
             alert("UID no válido o cancelado");
           }
