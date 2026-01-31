@@ -705,6 +705,7 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
     <h2>${entry ? 'Editar Trabajador' : 'Registrar Trabajadores'} - ${formatDate(date)}</h2>
     <div id="quickForm">
       <label>Trabajador frecuente:<select id="quickWorkerTemplate"></select></label>
+      <div id="frequentWorkerButtons" style="margin-top:4px;"></div>
       <label>Nombre trabajador:<input type="text" id="quickWorkerName"></label>
       <label>Rango:<input type="text" id="quickWorkerRank"></label>
       <div id="workEntries"></div>
@@ -716,12 +717,32 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
 
   const quickTemplate = document.getElementById('quickWorkerTemplate');
   quickTemplate.innerHTML = '<option value=""></option>';
+  const buttonsContainer = document.getElementById('frequentWorkerButtons');
+  buttonsContainer.innerHTML = '';
+
   if(companyData[currentCompany] && companyData[currentCompany].templates){
-    companyData[currentCompany].templates.forEach(t => {
+    companyData[currentCompany].templates.forEach((t, index) => {
       const opt = document.createElement('option');
       opt.value = t.name;
       opt.textContent = `${t.name} (${t.rank})`;
       quickTemplate.appendChild(opt);
+
+      // Botón eliminar plantilla
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '🗑️';
+      removeBtn.title = 'Eliminar de trabajadores frecuentes';
+      removeBtn.style.marginRight = '4px';
+      removeBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        if(confirm(`Eliminar "${t.name}" de trabajadores frecuentes? Esto no borrará registros previos.`)){
+          companyData[currentCompany].templates.splice(index, 1); // elimina solo de templates
+          saveToStorage(); // sincroniza cambios para todos los owners
+          openModal(currentDate); // recarga modal para actualizar la UI
+        }
+      };
+
+      buttonsContainer.appendChild(removeBtn);
     });
   }
 
@@ -745,6 +766,7 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
 
   updateTotalHours();
 }
+
 function closeModal(){ document.getElementById('calendarModal').style.display = 'none'; }
 
 function addWorkEntry(work='', hours=''){
