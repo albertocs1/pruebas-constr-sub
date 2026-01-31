@@ -279,6 +279,19 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
   </div>
 </div>
 
+<!-- Modal principal para seleccionar subcontratista -->
+<div id="subcontractorModal" class="modal">
+  <div class="modal-content">
+    <h2>Selecciona un subcontratista</h2>
+    <div id="subcontractorList"></div>
+    <button onclick="closeSubcontractorModal()" class="back-btn" style="margin-top:10px;">Cancelar</button>
+  </div>
+</div>
+
+
+
+
+  
 <!-- Modal de costes y fechas para export -->
 <div id="costModal" class="modal">
   <div class="modal-content">
@@ -461,7 +474,50 @@ function showMenu() {
   });
 }
 
+function openSubcontractorModal(newCompany, empresaId){
+  const container = document.getElementById('subcontractorList');
+  container.innerHTML = '';
 
+  db.ref('users').once('value').then(snapshot => {
+    const users = snapshot.val() || {};
+    const subUsers = Object.entries(users)
+      .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
+
+    if(subUsers.length === 0){
+      alert("No hay subcontratistas registrados");
+      return saveCompanyWithoutSub(newCompany, empresaId);
+    }
+
+    subUsers.forEach(([uid, u]) => {
+      const btn = document.createElement('button');
+      btn.textContent = u.info.name; // solo el nombre
+      btn.className = 'back-btn';
+      btn.style.margin = '4px 0';
+      btn.onclick = () => {
+        newCompany.owners[uid] = true; // vincular subcontratista
+        closeSubcontractorModal();
+        saveCompanyWithoutSub(newCompany, empresaId);
+      };
+      container.appendChild(btn);
+    });
+
+    document.getElementById('subcontractorModal').style.display = 'flex';
+  });
+}
+
+function closeSubcontractorModal(){
+  document.getElementById('subcontractorModal').style.display = 'none';
+}
+
+// Guardar empresa (ya sea con subcontratista o solo contratista)
+function saveCompanyWithoutSub(newCompany, empresaId){
+  companyData[empresaId] = newCompany;
+  document.getElementById('newCompanyName').value = '';
+  saveToStorage();
+  renderCompanyList();
+}
+
+  
 function addCompany() {
   if (!currentUser) return alert("Usuario no autenticado");
 
@@ -487,31 +543,11 @@ function addCompany() {
   // 🔹 Preguntar si se quiere vincular con un subcontratista
   const linkSub = confirm("¿Quieres vincular esta empresa con un subcontratista existente?");
   if (linkSub) {
-    db.ref('users').once('value').then(snapshot => {
-      const users = snapshot.val() || {};
-      const subUsers = Object.entries(users)
-        .filter(([uid, u]) => u.info && u.info.role && u.info.role.toLowerCase() === 'subcontratista');
+  openSubcontractorModal(newCompany, empresaId);
+} else {
+  saveCompanyWithoutSub(newCompany, empresaId);
+}
 
-      if (subUsers.length === 0) return alert("No hay subcontratistas registrados");
-
-      // Selección mediante prompt sencillo
-      const names = subUsers.map(([uid, u]) => `${u.info.email} (${uid})`).join("\n");
-      const sel = prompt("Subcontratistas registrados:\n" + names + "\n\nEscribe el UID del subcontratista a vincular:");
-
-      const selected = subUsers.find(([uid]) => uid === sel.trim());
-      if (selected) {
-        const subUid = selected[0];
-        newCompany.owners[subUid] = true; // añadir subcontratista como owner
-      } else {
-        alert("UID no válido o cancelado. Se creará sin vincular subcontratista");
-      }
-
-      // 🔹 Guardar en Firebase para todos los owners
-      companyData[empresaId] = newCompany;
-      document.getElementById('newCompanyName').value = '';
-      saveToStorage(); // ✅ Propaga a todos los owners
-      renderCompanyList();
-    });
   } else {
     // 🔹 Guardar solo contratista
     companyData[empresaId] = newCompany;
