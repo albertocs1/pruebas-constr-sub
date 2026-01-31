@@ -229,29 +229,18 @@ input, select, textarea { width:100%; padding:8px; margin-top:6px; border-radius
 
 <!-- MENU EMPRESAS -->
 <div id="companyMenu">
-  <h2>Empresas</h2>
   <!-- Email del usuario conectado -->
   <p id="currentUserEmail" style="font-size:0.9rem; color:#555; margin-bottom:8px;"></p>
-  
-  <div id="companyList"></div>
-  <!-- Añadir empresa nueva -->
-  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-    <input type="text" id="newCompanyName" placeholder="Nueva empresa">
-    <button onclick="addCompany()" class="back-btn">Añadir</button>
-  </div>
-  <!-- Añadir Subcontratista -->
-  <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-  <select id="subcontractorSelect">
-    <option value="">Añadir Subcontratista existente</option>
-  </select>
-  <button onclick="addSubcontractorAsCompany()" class="back-btn">Añadir</button>
-</div>
 
-  
+  <!-- Lista de empresas -->
+  <div id="companyList"></div>
+
+  <!-- Botón Cerrar sesión / Cambiar usuario -->
   <div style="margin-top:10px;">
     <button id="logoutBtn" class="back-btn" style="background:#ef4444; width:100%;">Cerrar sesión / Cambiar usuario</button>
   </div>
 </div>
+
 
 <!-- VISTA CALENDARIO -->
 <div id="calendarView">
@@ -484,29 +473,23 @@ function showMenu() {
   });
 }
 
+function addCompany(nameFromPrompt) {
+  if (!currentUser) return alert("Usuario no autenticado");
 
-function addCompany(){
-  if(!currentUser) return alert("Usuario no autenticado");
-
-  const name = document.getElementById('newCompanyName').value.trim();
-  if(!name) return;
-  if(companyData[name]) {
+  const name = nameFromPrompt || document.getElementById('newCompanyName')?.value?.trim();
+  if (!name) return;
+  if (companyData[name]) {
     alert('Ya existe esa empresa');
     return;
   }
 
-  // Crear nueva empresa localmente
   companyData[name] = { calendar: {}, templates: [] };
-  document.getElementById('newCompanyName').value = '';
-
   currentCompany = name;
 
-  // Guardar en Firebase
   saveToStorage();
-
-  // 🔹 Actualizar la lista inmediatamente, sin esperar a Firebase
   renderCompanyList();
 }
+
 
 function addSubcontractorAsCompany() {
   const subUid = document.getElementById('subcontractorSelect').value;
@@ -584,43 +567,38 @@ function loadSubcontractorsDropdown() {
 
 function renderCompanyList() {
   const container = document.getElementById('companyList');
-
-  if (!container) {
-    console.error('No existe el contenedor #companyList');
-    return;
-  }
-
   container.innerHTML = '';
 
-  // ===== TÍTULO (solo para comprobar que se pinta bien) =====
-  const title = document.createElement('div');
-  title.textContent = 'MENÚ DE EMPRESAS';
-  title.style.fontWeight = 'bold';
-  title.style.marginBottom = '10px';
-  container.appendChild(title);
-
-  // ===== BOTÓN AÑADIR EMPRESA (solo contratista) =====
+  // 🔹 Botón Añadir empresa solo para contratista
   if (currentUserRole === 'contratista') {
-    const addBtn = document.createElement('div');
+    const addBtn = document.createElement('button');
     addBtn.textContent = '➕ Añadir empresa';
-    addBtn.style.cursor = 'pointer';
-    addBtn.style.padding = '8px';
-    addBtn.style.border = '1px solid #ccc';
-    addBtn.style.marginBottom = '10px';
-    addBtn.style.background = '#eef';
-
+    addBtn.className = 'back-btn';
+    addBtn.style.width = '100%';
+    addBtn.style.marginBottom = '12px';
     addBtn.onclick = () => {
-      openAddCompanyModal();
+      const name = prompt('Nombre de la nueva empresa:');
+      if (!name) return;
+      addCompany(name);
     };
-
     container.appendChild(addBtn);
   }
 
-  // ===== MENSAJE TEMPORAL =====
-  const info = document.createElement('div');
-  info.textContent = 'Aquí se listarán las empresas...';
-  info.style.opacity = '0.7';
-  container.appendChild(info);
+  // 🔹 Listado de empresas
+  Object.entries(companyData).forEach(([key, comp]) => {
+    const div = document.createElement('div');
+    div.className = 'company-item';
+    div.textContent = comp.displayName || key;
+    div.onclick = () => openCompany(key);
+    container.appendChild(div);
+  });
+
+  if (Object.keys(companyData).length === 0) {
+    const info = document.createElement('div');
+    info.textContent = 'No hay empresas añadidas todavía';
+    info.style.opacity = '0.6';
+    container.appendChild(info);
+  }
 }
 
 
