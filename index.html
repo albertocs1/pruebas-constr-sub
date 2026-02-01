@@ -1107,12 +1107,33 @@ if('serviceWorker' in navigator){
 }
 
 function login(){
-  const email = document.getElementById('loginEmail').value;
+  const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value;
 
   auth.signInWithEmailAndPassword(email, pass)
+    .then(userCredential => {
+      const user = userCredential.user;
+
+      db.ref(`users/${user.uid}/info`).once('value')
+        .then(snapshot => {
+          const info = snapshot.val();
+
+          if(info && info.approved === true){
+            // ✅ Usuario aprobado
+            currentUser = user;
+            document.getElementById('loginView').style.display = 'none';
+            showMenu();
+          } else {
+            // ❌ Usuario no aprobado
+            auth.signOut();
+            alert("Tu cuenta aún no ha sido aprobada por el administrador.");
+          }
+        });
+    })
     .catch(err => alert(err.message));
 }
+
+
 
 // Mostrar formulario de registro
 function showRegister() {
@@ -1127,48 +1148,38 @@ function showLogin() {
 }
 
 // Registro con rol
-function registerUser() {
+function registerUser(){
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
-  const pass = document.getElementById('regPassword').value.trim();
+  const pass = document.getElementById('regPassword').value;
   const role = document.getElementById('regRole').value;
 
-  if(!name || !email || !pass || !role){
-  return alert("Complete todos los campos");
+  if(!name || !email || !pass){
+    alert("Completa todos los campos");
+    return;
   }
-
 
   auth.createUserWithEmailAndPassword(email, pass)
     .then(userCredential => {
       const user = userCredential.user;
-      
-      // 🔹 OPCIONAL: mostrar en consola
-      console.log("Usuario registrado:", user.email, "Rol:", role);
 
-      // 🔹 Guardar rol en Firebase
+      // 🔐 Guardamos el usuario como NO aprobado
       db.ref(`users/${user.uid}/info`).set({
         name: name,
         email: email,
-        role: role
-      })
+        role: role,
+        approved: false
+      });
 
-      .then(() => {
-        // 🔹 Actualizamos currentUser
-        currentUser = user;
+      alert("Registro completado. Tu cuenta debe ser aprobada por el administrador.");
 
-        // 🔹 Limpiamos y ocultamos formularios
-        document.getElementById('registerForm').style.display = 'none';
-        document.getElementById('loginView').style.display = 'none';
-
-        // 🔹 Mostramos la app y menú de empresas
-        document.getElementById('appView').style.display = 'block';
-        showMenu();
-
-      })
-      .catch(err => alert("Error guardando rol: " + err.message));
+      // Cerramos sesión automáticamente
+      auth.signOut();
+      showLogin();
     })
     .catch(err => alert(err.message));
 }
+
 
 
 // ==== Scroll sincronizado (cabeceras) ====
