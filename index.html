@@ -778,10 +778,26 @@ function addWorkEntry(work='', hours=''){
   const div = document.createElement('div');
   div.className = 'work-block';
   div.innerHTML = `
-    <label>Trabajo realizado: <input type="text" class="workName" value="${work}" list="workSuggestions"></label>
-    <label>Horas / Medición: <input type="number" class="workHours" value="${hours}" min="0"></label>
-    <button class="remove-btn" type="button">Eliminar</button>
-  `;
+  <label>Trabajo realizado: 
+    <input type="text" class="workName" value="${work}" list="workSuggestions">
+  </label>
+
+  <label>Horas / Medición: 
+    <input type="number" class="workHours" value="${hours}" min="0" step="0.01">
+  </label>
+
+  <label>Unidad de medida:
+    <select class="workUnit">
+      <option value="h">h</option>
+      <option value="m3">m3</option>
+      <option value="Tn">Tn</option>
+      <option value="ud">ud</option>
+    </select>
+  </label>
+
+  <button class="remove-btn" type="button">Eliminar</button>
+`;
+
   const datalist = document.createElement('datalist');
   datalist.id = 'workSuggestions';
   div.querySelector('.workName').setAttribute('list','workSuggestions');
@@ -819,9 +835,11 @@ function saveEntry(entryIndex = null){
 
   // Obtener trabajos y horas
   const works = Array.from(document.querySelectorAll('.work-block')).map(b => ({
-    work: b.querySelector('.workName').value,
-    hours: Number(b.querySelector('.workHours').value || 0)
-  }));
+  work: b.querySelector('.workName').value,
+  hours: Number(b.querySelector('.workHours').value || 0),
+  unit: b.querySelector('.workUnit').value
+}));
+
   const total = works.reduce((s,w)=>s + w.hours, 0);
 
   if(!companyData[currentCompany].calendar) companyData[currentCompany].calendar = {};
@@ -883,7 +901,7 @@ function showDaySummary(dateKey){
 
     e.works.forEach(w => {
       const p = document.createElement('div');
-      p.textContent = `${w.work}: ${w.hours}h`;
+      p.textContent = `${w.work}: ${w.hours} ${w.unit || 'h'}`;
       workerDiv.appendChild(p);
     });
 
