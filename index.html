@@ -672,7 +672,12 @@ function renderCalendar(){
         // ⚠️ solo si no es tu parte y no está validado
         const ownerIcon = (!isValidated && w.owner !== currentUser.uid) ? ' ⚠️' : '';
 
-        p.textContent = `${w.name} (${w.total}h)${tick}${ownerIcon}`;
+        // 🔹 detectar unidades usadas en el parte
+        const units = new Set(w.works.map(work => work.unit || 'h'));
+        const unitText = units.size === 1 ? Array.from(units)[0] : 'varias';
+
+        
+        p.textContent = `${w.name} (${w.total} ${unitText})${tick}${ownerIcon}`;
         p.style.fontSize = '0.9rem';
         if(isValidated){
           p.style.color = '#2563eb';
