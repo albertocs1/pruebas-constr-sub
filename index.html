@@ -762,7 +762,7 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
   document.getElementById('quickWorkerRank').value = entry ? entry.rank : '';
   document.getElementById('workEntries').innerHTML = '';
   if(entry){
-    entry.works.forEach(w => addWorkEntry(w.work, w.hours));
+    entry.works.forEach(w => addWorkEntry(w.work, w.hours, w.unit));
   } else {
     addWorkEntry();
   }
@@ -819,8 +819,10 @@ function addWorkEntry(work='', hours='', unit='h'){
 
   div.querySelector('.remove-btn').onclick = () => { div.remove(); updateTotalHours(); };
   div.querySelector('.workHours').oninput = updateTotalHours;
+  div.querySelector('.workUnit').value = unit;
   container.appendChild(div);
-}
+
+  }
 
 function updateTotalHours(){
   const hours = Array.from(document.querySelectorAll('.workHours')).reduce((sum,i)=>sum + Number(i.value || 0), 0);
