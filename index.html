@@ -1062,7 +1062,7 @@ function confirmCosts(){
 
 function exportExcel(startDate, endDate) {
   const calendar = companyData[currentCompany].calendar;
-  let data = [["Fecha", "Nombre", "Rango", "Coste", "Trabajo", "Horas", "Importe", "Validación"]];
+  let data = [["Fecha", "Nombre", "Rango", "Coste", "Trabajo", "Medición", "Unidad de medición", "Importe", "Validación"]];
   let totalPorTrabajador = {};
   let totalPorTrabajo = {};
   let importePorTrabajo = {};
@@ -1087,10 +1087,12 @@ function exportExcel(startDate, endDate) {
           entry.rank,
           coste,
           work.work,
-          work.hours,
+          work.hours,       // Medición
+          work.unit || 'h', // Unidad de medición
           importe,
           validacion
         ]);
+
 
         totalPorTrabajador[entry.name] = (totalPorTrabajador[entry.name] || 0) + work.hours;
         totalPorTrabajo[work.work] = (totalPorTrabajo[work.work] || 0) + work.hours;
