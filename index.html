@@ -711,7 +711,7 @@ function openModal(date, readonly=false, entry=null, entryIndex=null){
 
       <div id="workEntries"></div>
       <button type="button" class="add-work-btn" onclick="addWorkEntry()">+ Añadir trabajo</button>
-      <label>Horas Totales:<input type="number" id="totalHours" readonly></label>
+      <label>Total:<input type="number" id="totalHours" readonly></label>
       <div style="margin-top:12px;">
         <button class="back-btn" onclick="saveEntry(${entryIndex !== null ? entryIndex : 'null'})">${entry ? 'Actualizar' : 'Guardar'}</button>
       </div>
@@ -908,7 +908,8 @@ function showDaySummary(dateKey){
     });
 
     const totalP = document.createElement('div');
-    totalP.textContent = `Total Horas: ${e.total}`;
+    totalP.textContent = `Total: ${e.total}`;
+
     workerDiv.appendChild(totalP);
 
     if(isValidated){
