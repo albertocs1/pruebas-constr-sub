@@ -779,7 +779,7 @@ function addWorkEntry(work='', hours=''){
   div.className = 'work-block';
   div.innerHTML = `
     <label>Trabajo realizado: <input type="text" class="workName" value="${work}" list="workSuggestions"></label>
-    <label>Horas: <input type="number" class="workHours" value="${hours}" min="0"></label>
+    <label>Horas / Medición: <input type="number" class="workHours" value="${hours}" min="0"></label>
     <button class="remove-btn" type="button">Eliminar</button>
   `;
   const datalist = document.createElement('datalist');
