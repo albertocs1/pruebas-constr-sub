@@ -1062,65 +1062,118 @@ function confirmCosts(){
 
 function exportExcel(startDate, endDate) {
   const calendar = companyData[currentCompany].calendar;
-  let data = [["Fecha", "Nombre", "Rango", "Coste", "Trabajo", "Medición", "Unidad de medición", "Importe", "Validación"]];
+
+  let data = [[
+    "Fecha",
+    "Nombre",
+    "Rango",
+    "Coste",
+    "Trabajo",
+    "Medición",
+    "Unidad de medición",
+    "Importe",
+    "Validación"
+  ]];
+
+  // NUEVAS ESTRUCTURAS
   let totalPorTrabajador = {};
   let totalPorTrabajo = {};
-  let importePorTrabajo = {};
 
-  // ✅ Convertir fechas a enteros YYYYMMDD para comparar sin problemas de zona horaria
   const startNum = parseInt(startDate.replaceAll("-", ""));
   const endNum = parseInt(endDate.replaceAll("-", ""));
 
   for (const dateKey in calendar) {
     const dateNum = parseInt(dateKey.replaceAll("-", ""));
-    if (dateNum < startNum || dateNum > endNum) continue; // ✅ comparación directa de números
+    if (dateNum < startNum || dateNum > endNum) continue;
 
     calendar[dateKey].forEach(entry => {
       entry.works.forEach(work => {
+
+        const unidad = work.unit || "h";
         const coste = costByRank[entry.rank] || 0;
         const importe = coste * work.hours;
-        const validacion = entry.validatedBy && entry.validatedBy.length > 0 ? "Sí" : "No"; // ✅ validación
+        const validacion = entry.validatedBy && entry.validatedBy.length > 0 ? "Sí" : "No";
 
+        // TABLA DETALLADA
         data.push([
           formatDate(dateKey),
           entry.name,
           entry.rank,
           coste,
           work.work,
-          work.hours,       // Medición
-          work.unit || 'h', // Unidad de medición
+          work.hours,
+          unidad,
           importe,
           validacion
         ]);
 
+        // ===== RESUMEN POR TRABAJADOR =====
+        if (!totalPorTrabajador[entry.name]) {
+          totalPorTrabajador[entry.name] = {};
+        }
+        if (!totalPorTrabajador[entry.name][unidad]) {
+          totalPorTrabajador[entry.name][unidad] = 0;
+        }
+        totalPorTrabajador[entry.name][unidad] += work.hours;
 
-        totalPorTrabajador[entry.name] = (totalPorTrabajador[entry.name] || 0) + work.hours;
-        totalPorTrabajo[work.work] = (totalPorTrabajo[work.work] || 0) + work.hours;
-        importePorTrabajo[work.work] = (importePorTrabajo[work.work] || 0) + importe;
+        // ===== RESUMEN POR TRABAJO =====
+        if (!totalPorTrabajo[work.work]) {
+          totalPorTrabajo[work.work] = {};
+        }
+        if (!totalPorTrabajo[work.work][unidad]) {
+          totalPorTrabajo[work.work][unidad] = {
+            medicion: 0,
+            importe: 0
+          };
+        }
+
+        totalPorTrabajo[work.work][unidad].medicion += work.hours;
+        totalPorTrabajo[work.work][unidad].importe += importe;
+
       });
     });
   }
 
+  // ===== TABLA RESUMEN TRABAJADORES =====
   data.push([]);
   data.push(["Resumen total por trabajador"]);
-  data.push(["Nombre", "Horas Totales"]);
-  for (const t in totalPorTrabajador) data.push([t, totalPorTrabajador[t]]);
+  data.push(["Nombre", "Medición Total", "Unidad de Medición"]);
 
+  for (const trabajador in totalPorTrabajador) {
+    for (const unidad in totalPorTrabajador[trabajador]) {
+      data.push([
+        trabajador,
+        totalPorTrabajador[trabajador][unidad],
+        unidad
+      ]);
+    }
+  }
+
+  // ===== TABLA RESUMEN TRABAJOS =====
   data.push([]);
-  data.push(["Resumen total por Trabajo"]);
-  data.push(["Trabajo", "Horas Totales", "Importe Total"]);
-  for (const w in totalPorTrabajo)
-    data.push([w, totalPorTrabajo[w], importePorTrabajo[w]]);
+  data.push(["Resumen total por trabajo"]);
+  data.push(["Trabajo", "Medición Total", "Unidad de Medición", "Importe Total"]);
+
+  for (const trabajo in totalPorTrabajo) {
+    for (const unidad in totalPorTrabajo[trabajo]) {
+      data.push([
+        trabajo,
+        totalPorTrabajo[trabajo][unidad].medicion,
+        unidad,
+        totalPorTrabajo[trabajo][unidad].importe
+      ]);
+    }
+  }
 
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, currentCompany);
+
   XLSX.writeFile(
     wb,
     `${currentCompany}_partes_obra_${startDate}_a_${endDate}.xlsx`
   );
 }
-
 
 
 // ==== PWA Service Worker (opcional) ====
